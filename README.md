@@ -38,7 +38,7 @@
 
 `entity` 必填，必須是狀態 sensor 的實際 Entity ID，不是來源 pH／EC／液位 sensor。`title` 選填；`show_parameters` 預設為 `true`，設為 `false` 會移除參數區。
 
-此儲存庫包含 HACS 前端卡片中繼資料，但目前為私人 alpha 專案；**本次沒有執行 HACS 安裝、公開發行或線上 HA 驗收**。GitHub／HACS 存取權與後續發布由專案維護者處理。請勿將私人儲存庫的 CLI 存取權視為 HACS 已可存取。
+此儲存庫包含 HACS 前端卡片中繼資料，現已依使用者要求公開，仍為 alpha 專案；**尚未執行 HACS 安裝、正式發行或線上 HA 驗收**。Public 不代表已列入 HACS 預設清單，也不等於 HACS 安裝已驗證成功。
 
 ## 凍結的 P1 狀態契約
 
@@ -104,4 +104,4 @@ hass.callService('number', 'set_value', {
 - P3：上下限等多項參數原子儲存、跨欄位交易、衝突處理與完整高階編輯器。
 - 正式發行、HACS 遠端安裝、真實 HA 與實體設備驗收皆未執行；GitHub 程式推送不代表這些步驟已完成。
 
-完整分階段路線圖見 [docs/DEVELOPMENT_PLAN.md](docs/DEVELOPMENT_PLAN.md)；配套後端為 [uninus-nutriculture](https://github.com/ivanlee1007/uninus-nutriculture)。遠端 CI 結果以 Actions 的對應 commit 為準。
+完整分階段路線圖見 [docs/DEVELOPMENT_PLAN.md](docs/DEVELOPMENT_PLAN.md)；[總/子開關與流程組合](docs/CONTROL_SWITCHES.md) 及 [原系統功能差異盤點](docs/FUNCTIONAL_PARITY_REVIEW.md) 已納入後續規劃，尚未實作，不會使 P1 出現設備控制。配套後端為 [uninus-nutriculture](https://github.com/ivanlee1007/uninus-nutriculture)。遠端 CI 結果以 Actions 的對應 commit 為準。
