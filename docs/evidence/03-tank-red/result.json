@@ -1,0 +1,17 @@
+{
+  "command": [
+    "D:\\UNiNUS Projects\\AI project\\uninus-nutriculture-card\\.venv\\Scripts\\python.exe",
+    "tests/test_browser.py",
+    "BrowserTests.test_03_draft_cannot_follow_a_new_tank",
+    "-v"
+  ],
+  "started_utc": "2026-11-02T14:18:06.377950+00:00",
+  "returncode": 1,
+  "sha256": {
+    "uninus-nutriculture-card.js": "7ca83066f2c504a76b7d19220703dcec5b3c22457524c998d662e7a6cb37d56d",
+    "tests/test_browser.py": "d4b4e06bbb092bbb49d1a1187bddb6a754993753d3f5f716ea7979c826a18546",
+    "tests/record_run.py": "0a82a1dde58678a45d66646f927b20c621f4cf45a81bb9c995d96b046138527a"
+  },
+  "python": "3.14.5 (main, May 10 2026, 20:29:46) [MSC v.1944 64 bit (AMD64)]",
+  "chromium_executable": "C:/Users/ivanl/AppData/Local/ms-playwright/chromium-1248/chrome-win64/chrome.exe"
+}

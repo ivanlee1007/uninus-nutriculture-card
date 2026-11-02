@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>模擬資料 · UNiNUS Nutriculture</title>
+<style>
+  body{font:14px system-ui,sans-serif;margin:0;padding:16px;color:#213b48;background:#edf3f5;box-sizing:border-box}
+  main{max-width:860px;margin:auto}h1{font-size:18px}p{line-height:1.5}select,button{padding:8px;margin:4px 4px 12px 0;max-width:100%}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px}uninus-nutriculture-card{display:block}
+</style>
+<main>
+  <h1>模擬資料 · 非即時系統</h1>
+  <p>完全離線展示：沒有 Home Assistant 連線、權杖或實體設備。此頁的「儲存」只改變記憶體中的模擬 Number。</p>
+  <label>情境 <select id="scenario"><option value="within_range">範圍內</option><option value="out_of_range">超出範圍</option><option value="invalid">來源無效</option><option value="active">不支援的 active 模式</option></select></label>
+  <uninus-nutriculture-card></uninus-nutriculture-card>
+  <h2>模擬呼叫紀錄</h2><pre id="log">尚無呼叫</pre>
+</main>
+<script src="../uninus-nutriculture-card.js"></script>
+<script>
+  const card=document.querySelector('uninus-nutriculture-card');
+  const keys=['level_low','level_high','ph_low','ph_high','ec_low','ec_high','refill_timeout','ec_timeout','ph_timeout','mix_duration'];
+  const defaults=[2.25,2.4,5.4,5.8,.8,.9,190,90,190,10];
+  const mapping=Object.fromEntries(keys.map(key=>[key,`number.demo_${key}`]));
+  const states={};
+  keys.forEach((key,i)=>{states[mapping[key]]={state:String(defaults[i]),attributes:{min:0,max:i<6?14:240,step:i<6?.01:1,unit_of_measurement:i<2?'m':i<4?'':i<6?'mS/cm':'min'}};});
+  states['sensor.demo_status']={state:'within_range',attributes:{schema_version:1,mode:'shadow',ready_for_irrigation:false,source_entities:{ph:'sensor.demo_ph',ec:'sensor.demo_ec',level:'sensor.demo_level'},parameter_entities:mapping,parameters:Object.fromEntries(keys.map((key,i)=>[key,defaults[i]])),reasons:[]}};
+  states['sensor.demo_ph']={state:'5.6',attributes:{unit_of_measurement:'pH'}};
+  states['sensor.demo_ec']={state:'0.85',attributes:{unit_of_measurement:'mS/cm'}};
+  states['sensor.demo_level']={state:'2.3',attributes:{unit_of_measurement:'m'}};
+  const hass={states,async callService(domain,service,data){
+    if(domain!=='number'||service!=='set_value'||!Object.values(mapping).includes(data.entity_id)||!Number.isFinite(data.value)) throw new Error('不支援的模擬呼叫');
+    states[data.entity_id].state=String(data.value);
+    document.querySelector('#log').textContent=JSON.stringify({simulation:true,domain,service,data},null,2);
+    card.hass=hass;
+  }};
+  card.setConfig({entity:'sensor.demo_status',title:'UNiNUS Nutriculture · 模擬資料'});
+  card.hass=hass;
+  document.querySelector('#scenario').addEventListener('change',event=>{
+    const scenario=event.target.value,status=states['sensor.demo_status'];
+    status.state=scenario==='active'?'within_range':scenario;
+    status.attributes.mode=scenario==='active'?'active':'shadow';
+    status.attributes.reasons=scenario==='out_of_range'?['ph_out_of_range']:scenario==='invalid'?['source_ph_unavailable']:[];
+    states['sensor.demo_ph'].state=scenario==='invalid'?'unavailable':scenario==='out_of_range'?'6.2':'5.6';
+    card.hass=hass;
+  });
+</script>
+</html>

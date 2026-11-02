@@ -1,0 +1,16 @@
+BROWSER_VERSION=156.0.8078.4
+test_02_explicit_single_item_save_uses_actual_metadata (__main__.BrowserTests.test_02_explicit_single_item_save_uses_actual_metadata) ... FAIL
+
+======================================================================
+FAIL: test_02_explicit_single_item_save_uses_actual_metadata (__main__.BrowserTests.test_02_explicit_single_item_save_uses_actual_metadata)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\UNiNUS Projects\AI project\uninus-nutriculture-card\tests\test_browser.py", line 68, in test_02_explicit_single_item_save_uses_actual_metadata
+    self.assertEqual(p.locator('[data-param]').count(),10)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 != 10
+
+----------------------------------------------------------------------
+Ran 1 test in 1.468s
+
+FAILED (failures=1)

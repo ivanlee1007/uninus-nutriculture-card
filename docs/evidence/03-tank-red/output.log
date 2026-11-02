@@ -1,0 +1,19 @@
+BROWSER_VERSION=156.0.8078.4
+test_03_draft_cannot_follow_a_new_tank (__main__.BrowserTests.test_03_draft_cannot_follow_a_new_tank) ... FAIL
+
+======================================================================
+FAIL: test_03_draft_cannot_follow_a_new_tank (__main__.BrowserTests.test_03_draft_cannot_follow_a_new_tank)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\UNiNUS Projects\AI project\uninus-nutriculture-card\tests\test_browser.py", line 93, in test_03_draft_cannot_follow_a_new_tank
+    self.assertEqual(field.input_value(),'6')
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '5.55' != '6'
+- 5.55
++ 6
+
+
+----------------------------------------------------------------------
+Ran 1 test in 1.505s
+
+FAILED (failures=1)

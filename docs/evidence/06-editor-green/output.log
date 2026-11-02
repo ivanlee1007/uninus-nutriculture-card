@@ -1,0 +1,12 @@
+BROWSER_VERSION=156.0.8078.4
+test_01_shadow_readings_and_untrusted_title (test_browser.BrowserTests.test_01_shadow_readings_and_untrusted_title) ... ok
+test_02_explicit_single_item_save_uses_actual_metadata (test_browser.BrowserTests.test_02_explicit_single_item_save_uses_actual_metadata) ... ok
+test_03_draft_cannot_follow_a_new_tank (test_browser.BrowserTests.test_03_draft_cannot_follow_a_new_tank) ... ok
+test_04_old_completion_cannot_touch_reconfigured_draft (test_browser.BrowserTests.test_04_old_completion_cannot_touch_reconfigured_draft) ... ok
+test_05_mapping_drift_cannot_retarget_a_typed_draft (test_browser.BrowserTests.test_05_mapping_drift_cannot_retarget_a_typed_draft) ... ok
+test_06_picker_editor_preserves_config_and_toggles_parameters (test_browser.BrowserTests.test_06_picker_editor_preserves_config_and_toggles_parameters) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 4.865s
+
+OK

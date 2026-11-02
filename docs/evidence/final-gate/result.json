@@ -1,0 +1,59 @@
+{
+  "sha256": {
+    "uninus-nutriculture-card.js": "e4b7d29962e10bbd9139a29923e2e4e35f21017714d04bb61474f5e40ea9ec25",
+    "tests/test_contract.cjs": "68bcc09902ac6df3d1ca6de92f18dd6328376392a454231ffe2746fbaae0d137",
+    "tests/test_browser.py": "887bf9c82e8f8b6dc2fa62a3690dc77692ba671dbdd2799767052225757926a4",
+    "tests/check.py": "bb24cbbf8fb4512006d41537e933e11872e93eb55a35679706f777120b58a587",
+    "demo/index.html": "ac35d26df53456b47cd34808d761cacf5efea7a20ec10324d4847c7362dcd2f0",
+    "package.json": "c2ef171eaaef8b12ae6c2a4bb51dfc6d66586f9b08a2957e305f8d55c116cb27",
+    "hacs.json": "2cfe26af42164cf8d07bb1292eec780745b758912da4536ed9c881e56bc528f8",
+    "requirements-test.txt": "237f68beb9e5198d94b217868a1d08f3a26a58f9d9837a10b3ce09bec8a8727f",
+    ".github/workflows/validate.yml": "8f7d317a3c521fea87efead9d1a043fa7cf3355e13255d5782541a13241a6462"
+  },
+  "results": [
+    {
+      "name": "node-version",
+      "command": [
+        "C:\\Program Files\\nodejs\\node.EXE",
+        "--version"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "syntax",
+      "command": [
+        "C:\\Program Files\\nodejs\\node.EXE",
+        "--check",
+        "uninus-nutriculture-card.js"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "unit",
+      "command": [
+        "C:\\Program Files\\nodejs\\node.EXE",
+        "tests/test_contract.cjs"
+      ],
+      "returncode": 0,
+      "expected_cases": 5,
+      "executed_cases": 5
+    },
+    {
+      "name": "browser",
+      "command": [
+        "D:\\UNiNUS Projects\\AI project\\uninus-nutriculture-card\\.venv\\Scripts\\python.exe",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-p",
+        "test_browser.py",
+        "-v"
+      ],
+      "returncode": 0,
+      "expected_cases": 16,
+      "executed_cases": 16
+    }
+  ]
+}

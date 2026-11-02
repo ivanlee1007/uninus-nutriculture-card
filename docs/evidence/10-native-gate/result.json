@@ -1,0 +1,52 @@
+{
+  "sha256": {
+    "uninus-nutriculture-card.js": "e4b7d29962e10bbd9139a29923e2e4e35f21017714d04bb61474f5e40ea9ec25",
+    "tests/test_contract.cjs": "68bcc09902ac6df3d1ca6de92f18dd6328376392a454231ffe2746fbaae0d137",
+    "tests/test_browser.py": "0530d9b1cec5b9365b8eeb25395d65f5dea5f20edb83543357271e66bfc968cf",
+    "tests/check.py": "1e06306e04346bc4ad6e0904138aafa96e521b6787d8db42dd17f4a50ac4b854"
+  },
+  "results": [
+    {
+      "name": "node-version",
+      "command": [
+        "C:\\Program Files\\nodejs\\node.EXE",
+        "--version"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "syntax",
+      "command": [
+        "C:\\Program Files\\nodejs\\node.EXE",
+        "--check",
+        "uninus-nutriculture-card.js"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "unit",
+      "command": [
+        "C:\\Program Files\\nodejs\\node.EXE",
+        "tests/test_contract.cjs"
+      ],
+      "returncode": 0
+    },
+    {
+      "name": "browser",
+      "command": [
+        "D:\\UNiNUS Projects\\AI project\\uninus-nutriculture-card\\.venv\\Scripts\\python.exe",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-p",
+        "test_browser.py",
+        "-v"
+      ],
+      "returncode": 0,
+      "expected_cases": 14,
+      "executed_cases": 14
+    }
+  ]
+}

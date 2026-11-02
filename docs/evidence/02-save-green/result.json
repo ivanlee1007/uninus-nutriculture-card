@@ -1,0 +1,22 @@
+{
+  "command": [
+    "D:\\UNiNUS Projects\\AI project\\uninus-nutriculture-card\\.venv\\Scripts\\python.exe",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tests",
+    "-p",
+    "test_browser.py",
+    "-v"
+  ],
+  "started_utc": "2026-11-02T14:17:33.023950+00:00",
+  "returncode": 0,
+  "sha256": {
+    "uninus-nutriculture-card.js": "7ca83066f2c504a76b7d19220703dcec5b3c22457524c998d662e7a6cb37d56d",
+    "tests/test_browser.py": "516f3d1dd2b5aad9cbca8ddd4175edb1c26b1a823005b0893d9e38a59f6c8a2e",
+    "tests/record_run.py": "0a82a1dde58678a45d66646f927b20c621f4cf45a81bb9c995d96b046138527a"
+  },
+  "python": "3.14.5 (main, May 10 2026, 20:29:46) [MSC v.1944 64 bit (AMD64)]",
+  "chromium_executable": "C:/Users/ivanl/AppData/Local/ms-playwright/chromium-1248/chrome-win64/chrome.exe"
+}

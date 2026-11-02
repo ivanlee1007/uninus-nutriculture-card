@@ -1,0 +1,8 @@
+BROWSER_VERSION=156.0.8078.4
+test_01_shadow_readings_and_untrusted_title (test_browser.BrowserTests.test_01_shadow_readings_and_untrusted_title) ... ok
+test_02_explicit_single_item_save_uses_actual_metadata (test_browser.BrowserTests.test_02_explicit_single_item_save_uses_actual_metadata) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 3.370s
+
+OK

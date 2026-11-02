@@ -1,0 +1,73 @@
+
+> uninus-nutriculture-card@0.1.0-alpha.1 test
+> python tests/check.py
+
+[node-version] exit=0
+v18.6.0
+
+[syntax] exit=0
+
+[unit] exit=0
+(node:28916) ExperimentalWarning: The test runner is an experimental feature. This feature could change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+TAP version 13
+# Subtest: target uses exact mapped Number and native metadata
+ok 1 - target uses exact mapped Number and native metadata
+  ---
+  duration_ms: 0.0025511
+  ...
+# Subtest: schema/mode unavailable never yield a writable target
+ok 2 - schema/mode unavailable never yield a writable target
+  ---
+  duration_ms: 0.0002699
+  ...
+# Subtest: invalid mappings and unavailable Number fail closed
+ok 3 - invalid mappings and unavailable Number fail closed
+  ---
+  duration_ms: 0.0002429
+  ...
+# Subtest: finite range and step validation includes exact boundary
+ok 4 - finite range and step validation includes exact boundary
+  ---
+  duration_ms: 0.0001943
+  ...
+# Subtest: registration is idempotent with a second resource evaluation
+ok 5 - registration is idempotent with a second resource evaluation
+  ---
+  duration_ms: 0.0008817
+  ...
+1..5
+# tests 5
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 0.0521276
+
+[browser] exit=0
+BROWSER_VERSION=156.0.8078.4
+test_01_shadow_readings_and_untrusted_title (test_browser.BrowserTests.test_01_shadow_readings_and_untrusted_title) ... ok
+test_02_explicit_single_item_save_uses_actual_metadata (test_browser.BrowserTests.test_02_explicit_single_item_save_uses_actual_metadata) ... ok
+test_03_draft_cannot_follow_a_new_tank (test_browser.BrowserTests.test_03_draft_cannot_follow_a_new_tank) ... ok
+test_04_old_completion_cannot_touch_reconfigured_draft (test_browser.BrowserTests.test_04_old_completion_cannot_touch_reconfigured_draft) ... ok
+test_05_mapping_drift_cannot_retarget_a_typed_draft (test_browser.BrowserTests.test_05_mapping_drift_cannot_retarget_a_typed_draft) ... ok
+test_06_picker_editor_preserves_config_and_toggles_parameters (test_browser.BrowserTests.test_06_picker_editor_preserves_config_and_toggles_parameters) ... ok
+test_07_unresolved_target_stays_locked_across_same_config (test_browser.BrowserTests.test_07_unresolved_target_stays_locked_across_same_config) ... ok
+test_08_missing_incompatible_and_invalid_targets_fail_closed (test_browser.BrowserTests.test_08_missing_incompatible_and_invalid_targets_fail_closed) ... ok
+test_09_numeric_range_step_finite_and_rejection_preserves_draft (test_browser.BrowserTests.test_09_numeric_range_step_finite_and_rejection_preserves_draft) ... ok
+test_10_live_updates_preserve_node_focus_caret_and_disclosure (test_browser.BrowserTests.test_10_live_updates_preserve_node_focus_caret_and_disclosure) ... ok
+test_11_disconnected_success_and_failure_cannot_clear_draft (test_browser.BrowserTests.test_11_disconnected_success_and_failure_cannot_clear_draft) ... ok
+test_12_responsive_geometry_and_screenshots (test_browser.BrowserTests.test_12_responsive_geometry_and_screenshots) ... GEOMETRY=[{"viewport": 320, "card": 304, "maxOverflow": 0, "outside": 0}, {"viewport": 768, "card": 752, "maxOverflow": 0, "outside": 0}, {"viewport": 1200, "card": 1184, "maxOverflow": 0, "outside": 0}]
+ok
+test_13_initialization_orders_and_editor_entity_events (test_browser.BrowserTests.test_13_initialization_orders_and_editor_entity_events) ... ok
+test_14_collapsed_card_surfaces_unwritable_parameters (test_browser.BrowserTests.test_14_collapsed_card_surfaces_unwritable_parameters) ... ok
+test_15_offline_demo_writes_only_simulated_memory (test_browser.BrowserTests.test_15_offline_demo_writes_only_simulated_memory) ... ok
+test_16_all_ten_parameters_target_their_own_number (test_browser.BrowserTests.test_16_all_ten_parameters_target_their_own_number) ... ok
+
+----------------------------------------------------------------------
+Ran 16 tests in 9.899s
+
+OK
+
+All native gates passed. Evidence: D:\UNiNUS Projects\AI project\uninus-nutriculture-card\docs\evidence\final-package-gate

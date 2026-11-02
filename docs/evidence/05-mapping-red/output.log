@@ -1,0 +1,23 @@
+BROWSER_VERSION=156.0.8078.4
+test_05_mapping_drift_cannot_retarget_a_typed_draft (__main__.BrowserTests.test_05_mapping_drift_cannot_retarget_a_typed_draft) ... FAIL
+
+======================================================================
+FAIL: test_05_mapping_drift_cannot_retarget_a_typed_draft (__main__.BrowserTests.test_05_mapping_drift_cannot_retarget_a_typed_draft)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\UNiNUS Projects\AI project\uninus-nutriculture-card\tests\test_browser.py", line 127, in test_05_mapping_drift_cannot_retarget_a_typed_draft
+    self.assertEqual(p.evaluate('calls'),[])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: [['number', 'set_value', {'entity_id': 'number.replacement', 'value': 5.55}]] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+['number', 'set_value', {'entity_id': 'number.replacement', 'value': 5.55}]
+
+- [['number', 'set_value', {'entity_id': 'number.replacement', 'value': 5.55}]]
++ []
+
+----------------------------------------------------------------------
+Ran 1 test in 4.447s
+
+FAILED (failures=1)

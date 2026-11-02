@@ -1,0 +1,16 @@
+BROWSER_VERSION=156.0.8078.4
+test_01_shadow_readings_and_untrusted_title (test_browser.BrowserTests.test_01_shadow_readings_and_untrusted_title) ... FAIL
+
+======================================================================
+FAIL: test_01_shadow_readings_and_untrusted_title (test_browser.BrowserTests.test_01_shadow_readings_and_untrusted_title)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\UNiNUS Projects\AI project\uninus-nutriculture-card\tests\test_browser.py", line 59, in test_01_shadow_readings_and_untrusted_title
+    self.assertIn(expected,text)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+AssertionError: 'UNiNUS Nutriculture' not found in ''
+
+----------------------------------------------------------------------
+Ran 1 test in 31.601s
+
+FAILED (failures=1)

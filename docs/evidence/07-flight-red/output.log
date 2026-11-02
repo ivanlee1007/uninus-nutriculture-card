@@ -1,0 +1,16 @@
+BROWSER_VERSION=156.0.8078.4
+test_07_unresolved_target_stays_locked_across_same_config (__main__.BrowserTests.test_07_unresolved_target_stays_locked_across_same_config) ... FAIL
+
+======================================================================
+FAIL: test_07_unresolved_target_stays_locked_across_same_config (__main__.BrowserTests.test_07_unresolved_target_stays_locked_across_same_config)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\UNiNUS Projects\AI project\uninus-nutriculture-card\tests\test_browser.py", line 170, in test_07_unresolved_target_stays_locked_across_same_config
+    self.assertEqual(len(p.evaluate('calls')),1)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 2 != 1
+
+----------------------------------------------------------------------
+Ran 1 test in 1.601s
+
+FAILED (failures=1)

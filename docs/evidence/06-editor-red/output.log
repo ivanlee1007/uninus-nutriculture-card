@@ -1,0 +1,16 @@
+BROWSER_VERSION=156.0.8078.4
+test_06_picker_editor_preserves_config_and_toggles_parameters (__main__.BrowserTests.test_06_picker_editor_preserves_config_and_toggles_parameters) ... FAIL
+
+======================================================================
+FAIL: test_06_picker_editor_preserves_config_and_toggles_parameters (__main__.BrowserTests.test_06_picker_editor_preserves_config_and_toggles_parameters)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\UNiNUS Projects\AI project\uninus-nutriculture-card\tests\test_browser.py", line 138, in test_06_picker_editor_preserves_config_and_toggles_parameters
+    self.assertIsNotNone(result.get('picked'))
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: unexpectedly None
+
+----------------------------------------------------------------------
+Ran 1 test in 1.390s
+
+FAILED (failures=1)
