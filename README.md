@@ -1,5 +1,7 @@
 # UNiNUS Nutriculture / 養液控制
 
+> 最新控制定案（尚未實作）：取消獨立鏈結、各階段實際開始前查星期、新增原生整輪運行Switch並保留start_flow；見[CONTROL_DECISIONS.md](docs/CONTROL_DECISIONS.md)。P1仍僅影子監測。
+
 **0.1.0-alpha.1 · P1 影子監測**
 
 獨立、無執行期依賴的 Home Assistant Lovelace 卡片。發行檔只有 `uninus-nutriculture-card.js`；不載入 CDN、不保存權杖、不使用 localStorage。
@@ -106,6 +108,6 @@ hass.callService('number', 'set_value', {
 - P5：進階視覺化編輯器、手機/鍵盤體驗、診斷/歷史與完整多槽產品；不是把核心可配置流程延到P5。
 - 正式發行、HACS 遠端安裝、真實 HA 與實體設備驗收皆未執行；GitHub 程式推送不代表這些步驟已完成。
 
-研究依據見 [流程編排/UI、星期與外部啟動研究](docs/FLOW_DESIGN_RESEARCH.md)。研究建議以編排＋整輪/單階段取代獨立 `stage_link`，仍待R01確認；R01–R04皆非已批准精細政策或已交付功能。
+研究依據見 [流程編排/UI、星期與外部啟動研究](docs/FLOW_DESIGN_RESEARCH.md)。已確認取消獨立stage_link，以編排決定接續；R03採各階段實際開始前查星期，新增原生整輪運行Switch。R02/R04等細節仍待確認，以上尚未交付。
 
 完整分階段路線圖見 [docs/DEVELOPMENT_PLAN.md](docs/DEVELOPMENT_PLAN.md)；[總/子開關與流程組合](docs/CONTROL_SWITCHES.md) 及 [原系統功能差異盤點](docs/FUNCTIONAL_PARITY_REVIEW.md) 已納入後續規劃，尚未實作，不會使 P1 出現設備控制。配套後端為 [uninus-nutriculture](https://github.com/ivanlee1007/uninus-nutriculture)。遠端 CI 結果以 Actions 的對應 commit 為準。
