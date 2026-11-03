@@ -100,8 +100,12 @@ hass.callService('number', 'set_value', {
 
 ## 明確延期
 
-- P2/P3：實際設備控制、補水／加肥／酸鹼調整流程、灌溉授權與安全互鎖。
-- P3：上下限等多項參數原子儲存、跨欄位交易、衝突處理與完整高階編輯器。
+- P2：總開關＋四子開關資料模型、統一gate、外部整輪服務契約、補水安全骨架；未支援階段不假啟用。
+- P3：四階段可配置順序/重疊/相對延遲與條件、每階段七日複選；最小可排序階段列＋開始條件＋並行組＋預覽、加藥/混合/資源仲裁、成組原子參數與版本衝突處理。
+- P4：配方、外部action/結果互通與通知、完成/品質/灌溉許可介面。何時啟動整輪由外部排程/HA automation決定；不建排程器、不匯入排程、不管理外部腳本/旁支。星期只判允許，不自動產生工作；混合/脈衝/安全期限仍屬後端。
+- P5：進階視覺化編輯器、手機/鍵盤體驗、診斷/歷史與完整多槽產品；不是把核心可配置流程延到P5。
 - 正式發行、HACS 遠端安裝、真實 HA 與實體設備驗收皆未執行；GitHub 程式推送不代表這些步驟已完成。
+
+研究依據見 [流程編排/UI、星期與外部啟動研究](docs/FLOW_DESIGN_RESEARCH.md)。研究建議以編排＋整輪/單階段取代獨立 `stage_link`，仍待R01確認；R01–R04皆非已批准精細政策或已交付功能。
 
 完整分階段路線圖見 [docs/DEVELOPMENT_PLAN.md](docs/DEVELOPMENT_PLAN.md)；[總/子開關與流程組合](docs/CONTROL_SWITCHES.md) 及 [原系統功能差異盤點](docs/FUNCTIONAL_PARITY_REVIEW.md) 已納入後續規劃，尚未實作，不會使 P1 出現設備控制。配套後端為 [uninus-nutriculture](https://github.com/ivanlee1007/uninus-nutriculture)。遠端 CI 結果以 Actions 的對應 commit 為準。
