@@ -34,6 +34,32 @@ test('finite range and step validation includes exact boundary',()=>{
   for (const value of ['.8','.85','.9']) assert.equal(C.prototype.valid.call({}, {input:{value}},target),true,value);
   for (const value of ['',null,'NaN','Infinity','.79','.91','.855']) assert.equal(C.prototype.valid.call({}, {input:{value}},target),false,String(value));
 });
+test('v2 stub selects actual control sensor, never an arbitrary or unknown contract',()=>{
+  const valid={state:'idle',attributes:{schema_version:2,mode:'control',flow_state:'idle'}};
+  assert.equal(C.getStubConfig({states:{'sensor.other':{attributes:{}},'sensor.control_actual':valid}}).entity,'sensor.control_actual');
+  assert.equal(C.getStubConfig({states:{'sensor.future':{attributes:{schema_version:3,mode:'control'}}}}).entity,'sensor.uninus_nutriculture_status');
+});
+test('v2 Number target accepts control only, preserving v1 shadow validation',()=>{
+  const o=owner();Object.assign(o.status().attributes,{schema_version:2,mode:'control',flow_state:'idle'});o.status().state='idle';
+  assert.equal(C.prototype.target.call(o,row).id,'number.actual_ph');
+  o.status().attributes.mode='shadow';assert.ok(C.prototype.target.call(o,row).error);
+});
+test('native control resolves exact domains, fresh service and capability',()=>{
+  const o=owner(), r={key:'flow_run',domain:'switch'};
+  Object.assign(o.status().attributes,{schema_version:2,mode:'control',flow_state:'idle',capabilities:{refill:true},control_entities:{flow_run:'switch.native_run'}});o.status().state='idle';
+  o._hass.states['switch.native_run']={state:'off'};
+  assert.equal(C.prototype.controlTarget.call(o,r).service,'turn_on');
+  o._hass.states['switch.native_run'].state='on';assert.equal(C.prototype.controlTarget.call(o,r).service,'turn_off');
+  for(const id of ['button.native_run','switchXnative_run','switch.BAD',null]){o.status().attributes.control_entities.flow_run=id;assert.ok(C.prototype.controlTarget.call(o,r).error)}
+  o.status().attributes.control_entities.flow_run='switch.native_run';o.status().attributes.capabilities.refill=false;assert.ok(C.prototype.controlTarget.call(o,r).error);
+});
+test('native Button unknown is usable but unavailable and wrong domain are not',()=>{
+  const o=owner(), r={key:'emergency_stop',domain:'button'};
+  Object.assign(o.status().attributes,{schema_version:2,mode:'control',flow_state:'fault',control_entities:{emergency_stop:'button.native_stop'}});o.status().state='fault';
+  o._hass.states['button.native_stop']={state:'unknown'};
+  assert.equal(C.prototype.controlTarget.call(o,r).service,'press');
+  o._hass.states['button.native_stop'].state='unavailable';assert.ok(C.prototype.controlTarget.call(o,r).error);
+});
 test('registration is idempotent with a second resource evaluation',()=>{
   vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../uninus-nutriculture-card.js'),'utf8'),context);
   assert.equal(elements.size,2);assert.equal(context.window.customCards.length,1);

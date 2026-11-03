@@ -1,0 +1,16 @@
+BROWSER_VERSION=156.0.8078.4
+test_17_v2_displays_real_states_and_keeps_ten_number_editors (__main__.BrowserTests.test_17_v2_displays_real_states_and_keeps_ten_number_editors) ... FAIL
+
+======================================================================
+FAIL: test_17_v2_displays_real_states_and_keeps_ten_number_editors (__main__.BrowserTests.test_17_v2_displays_real_states_and_keeps_ten_number_editors)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\UNiNUS Projects\AI project\uninus-nutriculture-card\tests\test_browser.py", line 72, in test_17_v2_displays_real_states_and_keeps_ten_number_editors
+    self.assertIn('控制模式',p.locator('.badge').inner_text())
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '控制模式' not found in '影子監測'
+
+----------------------------------------------------------------------
+Ran 1 test in 17.494s
+
+FAILED (failures=1)

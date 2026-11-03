@@ -1,8 +1,8 @@
 {
   "name": "uninus-nutriculture-card",
-  "version": "0.1.0-alpha.1",
+  "version": "0.2.0-alpha.1",
   "private": true,
-  "description": "UNiNUS Nutriculture / 養液控制 — P1 shadow-only Lovelace card",
+  "description": "UNiNUS Nutriculture / 養液控制 — P1 shadow and P2 mapped native controls",
   "main": "uninus-nutriculture-card.js",
   "files": ["uninus-nutriculture-card.js", "hacs.json", "README.md"],
   "scripts": {

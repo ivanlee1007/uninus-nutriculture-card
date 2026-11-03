@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 label = sys.argv[1]
 out = ROOT / 'docs' / 'evidence' / label
 out.mkdir(parents=True, exist_ok=False)
-files = ['uninus-nutriculture-card.js','tests/test_browser.py','tests/record_run.py']
+files = ['uninus-nutriculture-card.js','tests/test_browser.py','tests/record_run.py','demo/index.html']
 hashes = {}
 for name in files:
     content = (ROOT/name).read_bytes()

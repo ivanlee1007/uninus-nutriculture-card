@@ -1,0 +1,17 @@
+BROWSER_VERSION=156.0.8078.4
+test_19_v2_latest_event_validation_and_fail_closed_targets (__main__.BrowserTests.test_19_v2_latest_event_validation_and_fail_closed_targets) ... ok
+test_20_v2_pending_lifecycle_and_new_scope_notices (__main__.BrowserTests.test_20_v2_pending_lifecycle_and_new_scope_notices) ... FAIL
+
+======================================================================
+FAIL: test_20_v2_pending_lifecycle_and_new_scope_notices (__main__.BrowserTests.test_20_v2_pending_lifecycle_and_new_scope_notices)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\UNiNUS Projects\AI project\uninus-nutriculture-card\tests\test_browser.py", line 164, in test_20_v2_pending_lifecycle_and_new_scope_notices
+    self.assertNotIn('old-scope-error',row.inner_text())
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'old-scope-error' unexpectedly found in '整輪運行 · off 開啟操作失敗：old-scope-error'
+
+----------------------------------------------------------------------
+Ran 2 tests in 2.570s
+
+FAILED (failures=1)

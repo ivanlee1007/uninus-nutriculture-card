@@ -1,12 +1,24 @@
 # UNiNUS Nutriculture / 養液控制
 
-> 最新控制定案（尚未實作）：取消獨立鏈結、各階段實際開始前查星期、新增原生整輪運行Switch並保留start_flow；見[CONTROL_DECISIONS.md](docs/CONTROL_DECISIONS.md)。P1仍僅影子監測。
+## P2候選：隔離測試入口與限制
 
-**0.1.0-alpha.1 · P1 影子監測**
+**P2補水候選已通過獨立SPEC與品質／安全審查；未部署原HA，不應直接接管實機。**完整結果與交付界線見[P2_ACCEPTANCE.md](docs/P2_ACCEPTANCE.md)。
+
+- 後端原生Options明選已註冊補水輸出、commissioning確認、回饋期限及星期；保存/取消不致動。
+- 先允許總開關與補水子開關，再用原生整輪Switch或`uninus_nutriculture.start_flow`請求一次補水；ON不會自行打開其他Enable。
+- 新版Card選擇後端實際的**schema2控制狀態Sensor**，即可看見總/補水/整輪、急停/復歸；舊schema1監測Sensor仍無控制按鈕。不要使用來源pH/EC/液位Sensor作入口或猜測Entity ID。
+- 高水位、正常停止、過期/無效來源、逾時及急停交由後端處理；未確認OFF不顯示假成功。運行中重複ON不重啟，重啟HA不續藥。
+- 人類操作預設僅管理員；原生automation可使用內部Context。P2只有補水，養/酸/獨立混合不可啟動，也沒有流程編排UI或內建排程。
+- Commissioning勾選不是韌體/斷線保護的軟體證明；HA當機/通訊失效時，一般Switch不保證會自停。只能識別已知Registry/平台uniqueId綁定，不能推測所有實體別名；部署前需另行確認設備端保護。
+- 本機已驗證：backend151項、Card Node9項/真Chromium23項及shipped UI→真隔離HA handler→SwitchEntity假硬體。這不是原HA前台宿主、HACS安裝或物理驗收；最新CI只以對應commit的Actions為準。
+
+
+
+**0.2.0-alpha.1 · P1監測相容＋P2受控補水候選**
 
 獨立、無執行期依賴的 Home Assistant Lovelace 卡片。發行檔只有 `uninus-nutriculture-card.js`；不載入 CDN、不保存權杖、不使用 localStorage。
 
-> **影子監測、不控制設備、尚未提供灌溉許可。**
+> schema1維持影子監測；schema2透過原生安全入口操作P2補水。**獨立審查已通過，實機／HACS尚未驗收；兩模式都不提供灌溉許可。**
 > `within_range` 只表示監測讀值在範圍內，絕不代表可灌溉；即使後端傳入 `ready_for_irrigation: true`，本卡也不顯示灌溉許可。
 
 ## 已實作
@@ -25,7 +37,7 @@
 2. 在儀表板資源新增 **JavaScript Module**：
 
    ```yaml
-   url: /local/uninus-nutriculture-card.js?v=0.1.0-alpha.1
+   url: /local/uninus-nutriculture-card.js?v=0.2.0-alpha.1
    type: module
    ```
 
@@ -62,7 +74,7 @@ parameters:
 reasons: []
 ```
 
-本卡只使用狀態中的明確映射，**不猜測 Number ID**。來源讀值來自 `hass.states`；`parameters` 只供無法取得 Number 時的唯讀參考，不能授權儲存。Number 缺失、不在 `number.*`、值無效或 metadata 無效，該列禁止儲存。schema 非 1、mode 非 `shadow`、狀態缺失／未知時全列禁止儲存。來源無效但狀態契約仍為 `invalid` 時，可調整健康的 Number 參數；這不是設備操作。
+本卡只使用狀態中的明確映射，**不猜測 Number ID**。來源讀值來自 `hass.states`；`parameters` 只供無法取得 Number 時的唯讀參考，不能授權儲存。Number 缺失、不在 `number.*`、值無效或 metadata 無效，該列禁止儲存。只接受合法的 schema1/shadow 或 schema2/control 狀態；schema2 的 `flow_state` 還必須與 Entity state 一致，其他契約或狀態缺失／未知時全列禁止儲存。來源無效但狀態契約仍合法時，可調整健康的 Number 參數；這不是直接設備操作。
 
 | 參數 | 契約預設值 | 單位 |
 | --- | ---: | --- |
@@ -81,7 +93,7 @@ reasons: []
 
 ## 寫入與生命週期界線
 
-唯一寫入路徑：
+P1/v2參數編輯的寫入路徑（控制操作另見P2段落）：
 
 ```javascript
 hass.callService('number', 'set_value', {
@@ -90,7 +102,7 @@ hass.callService('number', 'set_value', {
 });
 ```
 
-沒有自訂服務、啟停／泵浦／閥門／灌溉按鈕，也沒有任何設備控制路徑。每次儲存獨立，不保證上下限群組原子更新；後端的跨欄位驗證與權限仍是最終權威。服務拒絕保留草稿及錯誤。服務成功僅顯示已送出，顯示值以 Number Entity 讀回為準，不捏造成功讀回。
+schema1不顯示控制操作；schema2另提供總/補水/整輪Switch與急停/復歸，僅呼叫後端映射的switch.turn_on/turn_off及button.press，不直接操作實體泵或瀏覽器計時。每次儲存獨立，不保證上下限群組原子更新；後端的跨欄位驗證與權限仍是最終權威。服務拒絕保留草稿及錯誤。服務成功僅顯示已送出，顯示值以 Number Entity 讀回為準，不捏造成功讀回。
 
 切換狀態 Entity 會清除舊草稿；Number 映射改變亦清除該列草稿並提示重新輸入。每個請求擷取當時 Entity／目標／值與世代，舊成功或失敗不會改寫新的草稿或訊息。未完成的同一目標請求，在同一張卡片重新設定或移除再掛載後仍保持寫入鎖，直到原 Promise 結束。已送出的後端呼叫無法由前端取消或回滾。
 
@@ -100,9 +112,9 @@ hass.callService('number', 'set_value', {
 
 測試步驟、TDD 原始證據與範圍限制見 [docs/TESTING.md](docs/TESTING.md)；後端對接與接手資訊見 [docs/P1_HANDOFF.md](docs/P1_HANDOFF.md)。
 
-## 明確延期
+## 分期狀態
 
-- P2：總開關＋四子開關資料模型、統一gate、外部整輪服務契約、補水安全骨架；未支援階段不假啟用。
+- P2：補水原生映射操作與狀態已實作；後端0.2.0提供control_status schema2。P3階段目前unavailable/未支援，獨立審查已完成；發布與CI以對應commit為準，實機尚未驗收。
 - P3：四階段可配置順序/重疊/相對延遲與條件、每階段七日複選；最小可排序階段列＋開始條件＋並行組＋預覽、加藥/混合/資源仲裁、成組原子參數與版本衝突處理。
 - P4：配方、外部action/結果互通與通知、完成/品質/灌溉許可介面。何時啟動整輪由外部排程/HA automation決定；不建排程器、不匯入排程、不管理外部腳本/旁支。星期只判允許，不自動產生工作；混合/脈衝/安全期限仍屬後端。
 - P5：進階視覺化編輯器、手機/鍵盤體驗、診斷/歷史與完整多槽產品；不是把核心可配置流程延到P5。
@@ -110,7 +122,7 @@ hass.callService('number', 'set_value', {
 
 研究依據見 [流程編排/UI、星期與外部啟動研究](docs/FLOW_DESIGN_RESEARCH.md)。已確認取消獨立stage_link，以編排決定接續；R03採各階段實際開始前查星期，新增原生整輪運行Switch。R02/R04等細節仍待確認，以上尚未交付。
 
-完整分階段路線圖見 [docs/DEVELOPMENT_PLAN.md](docs/DEVELOPMENT_PLAN.md)；[總/子開關與流程組合](docs/CONTROL_SWITCHES.md) 及 [原系統功能差異盤點](docs/FUNCTIONAL_PARITY_REVIEW.md) 已納入後續規劃，尚未實作，不會使 P1 出現設備控制。配套後端為 [uninus-nutriculture](https://github.com/ivanlee1007/uninus-nutriculture)。遠端 CI 結果以 Actions 的對應 commit 為準。
+完整分階段路線圖見 [docs/DEVELOPMENT_PLAN.md](docs/DEVELOPMENT_PLAN.md)；[總/子開關與流程組合](docs/CONTROL_SWITCHES.md) 及 [原系統功能差異盤點](docs/FUNCTIONAL_PARITY_REVIEW.md) 依分期實作；P2補水已接通，P3–P5待開發；schema1監測介面不因此產生控制操作。配套後端為 [uninus-nutriculture](https://github.com/ivanlee1007/uninus-nutriculture)。遠端 CI 結果以 Actions 的對應 commit 為準。
 
 ## 共同開發規範
 

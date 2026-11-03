@@ -1,0 +1,27 @@
+BROWSER_VERSION=156.0.8078.4
+test_21_v2_pending_slot_switch_and_detached_events (__main__.BrowserTests.test_21_v2_pending_slot_switch_and_detached_events) ... ok
+test_22_v2_geometry_dark_light_and_node_continuity (__main__.BrowserTests.test_22_v2_geometry_dark_light_and_node_continuity) ... FAIL
+test_23_v2_demo_memory_only_actions_and_failures (__main__.BrowserTests.test_23_v2_demo_memory_only_actions_and_failures) ... FAIL
+
+======================================================================
+FAIL: test_22_v2_geometry_dark_light_and_node_continuity (__main__.BrowserTests.test_22_v2_geometry_dark_light_and_node_continuity)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\UNiNUS Projects\AI project\uninus-nutriculture-card\tests\test_browser.py", line 220, in test_22_v2_geometry_dark_light_and_node_continuity
+    self.assertTrue(all(b['width']>=44 and b['height']>=36 for b in g['buttons']))
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true
+
+======================================================================
+FAIL: test_23_v2_demo_memory_only_actions_and_failures (__main__.BrowserTests.test_23_v2_demo_memory_only_actions_and_failures)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\UNiNUS Projects\AI project\uninus-nutriculture-card\tests\test_browser.py", line 235, in test_23_v2_demo_memory_only_actions_and_failures
+    self.assertIn('v2',p.locator('#scenario').inner_text())
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'v2' not found in '範圍內\n超出範圍\n來源無效\n不支援的 active 模式'
+
+----------------------------------------------------------------------
+Ran 3 tests in 2.551s
+
+FAILED (failures=2)

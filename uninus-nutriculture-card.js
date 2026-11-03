@@ -1,4 +1,4 @@
-/* UNiNUS Nutriculture Card 0.1.0-alpha.1 — self-contained shadow monitor. */
+/* UNiNUS Nutriculture Card 0.2.0-alpha.1 — P1 shadow / P2 mapped native controls. */
 (() => {
   'use strict';
   const TAG = 'uninus-nutriculture-card';
@@ -12,6 +12,10 @@
     ['refill_timeout','補水逾時',190,'min'],['ec_timeout','EC 逾時',90,'min'],
     ['ph_timeout','pH 逾時',190,'min'],['mix_duration','混合時間',10,'min']
   ];
+  const FLOW_STATES = ['uncommissioned','disabled','idle','starting','refilling','stopping','completed','aborted','fault'];
+  const isShadow = status => status?.attributes?.schema_version === 1 && status.attributes.mode === 'shadow';
+  const isControl = status => status?.attributes?.schema_version === 2 && status.attributes.mode === 'control';
+  const writable = status => (isShadow(status) && ['within_range','out_of_range','invalid'].includes(status.state)) || (isControl(status) && FLOW_STATES.includes(status.state) && status.attributes.flow_state === status.state);
   const style = `
     :host{display:block;min-width:0;color:var(--primary-text-color,#213b48);font-family:var(--paper-font-body1_-_font-family,system-ui,sans-serif)}
     *{box-sizing:border-box}ha-card{display:block;border:1px solid var(--divider-color,#d9e4e7);border-radius:var(--ha-card-border-radius,16px);background:var(--ha-card-background,var(--card-background-color,#fff));padding:18px;overflow-wrap:anywhere}
@@ -22,6 +26,7 @@
     details{margin-top:16px;border-top:1px solid var(--divider-color,#d9e4e7);padding-top:12px}summary{cursor:pointer;font-size:14px;font-weight:600;min-height:32px}details>p{font-size:12px;color:var(--secondary-text-color,#607782)}
     .param{display:grid;grid-template-columns:minmax(0,1fr) minmax(70px,110px) 64px;gap:6px 10px;align-items:center;padding:10px 0;border-top:1px solid var(--divider-color,#d9e4e7)}.param label{font-size:13px;min-width:0}.param small{display:block;font-size:11px;color:var(--secondary-text-color,#607782);margin-top:3px}.param .message{grid-column:1/-1;font-size:12px;white-space:pre-line;color:var(--secondary-text-color,#607782)}
     input,button{font:inherit;min-width:0;max-width:100%;border-radius:7px;padding:9px 7px;border:1px solid var(--divider-color,#cddce1);color:inherit;background:var(--card-background-color,#fff)}input{width:100%;font-size:14px}button{cursor:pointer;font-size:13px;color:var(--primary-color,#277b86)}button:disabled{cursor:not-allowed;opacity:.5}:focus-visible{outline:2px solid var(--primary-color,#277b86);outline-offset:2px}
+    .control{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:9px 0;border-top:1px solid var(--divider-color,#d9e4e7)}.control button{min-width:64px;min-height:40px}.control small{grid-column:1/-1;white-space:pre-line;font-size:12px}.control p,[data-control-status]{white-space:pre-line}
     @media(max-width:360px){ha-card{padding:12px}.tile strong{font-size:20px}.tile{padding:10px 6px}}
   `;
   class NutricultureCard extends HTMLElement {
@@ -29,7 +34,8 @@
       super(); this.attachShadow({mode:'open'});
       const css = make('style', style); this.root = make('ha-card');
       const header = make('header'); this.heading = make('h2','UNiNUS Nutriculture');
-      header.append(this.heading,make('p','養液控制'),make('span','影子監測','badge'));
+      this.badge = make('span','影子監測','badge');
+      header.append(this.heading,make('p','養液控制'),this.badge);
       this.safety = make('div','不控制設備 · 尚未提供灌溉許可','safety');
       const tiles = make('section',undefined,'tiles'); tiles.setAttribute('aria-label','即時來源讀值');
       this.readings = {};
@@ -41,8 +47,22 @@
       this.quality = make('div','','quality'); this.quality.setAttribute('role','status');
       this.root.append(header,this.safety,tiles,this.quality); this.shadowRoot.append(css,this.root);
       this.rows = new Map(); this.flights = new Map();
+      this.controls = make('section'); this.controls.dataset.controls = '';
+      this.controlStatus = make('p'); this.controlStatus.dataset.controlStatus = ''; this.controlStatus.setAttribute('role','status');
+      this.unsupported = make('p'); this.unsupported.dataset.unsupported = '';
+      this.controls.append(this.controlStatus,this.unsupported);
+      this.controlRows = new Map();
+      for (const [key,label,domain] of [['automation_enabled','自動化總開關','switch'],['refill_enabled','補水子開關','switch'],['flow_run','整輪運行','switch'],['emergency_stop','急停','button'],['reset_fault','復歸','button']]) {
+        const el = make('div',undefined,'control'); el.dataset.control = key;
+        const caption = make('span'), button = make('button',label), message = make('small');
+        button.type = 'button'; button.setAttribute('aria-label',label); message.setAttribute('role','status');
+        const row = {key,label,domain,el,caption,button,message,error:''};
+        button.addEventListener('click',()=>this.invokeControl(row));
+        el.append(caption,button,message); this.controls.append(el); this.controlRows.set(key,row);
+      }
       this.details = make('details');
-      this.details.append(make('summary','參數調整 · 單項儲存'),make('p','每次僅儲存一項，不提供群組原子更新。時間參數僅儲存，不控制設備。'));
+      this.parameterHelp = make('p','每次僅儲存一項，不提供群組原子更新。時間參數僅儲存，不控制設備。');
+      this.details.append(make('summary','參數調整 · 單項儲存'),this.parameterHelp);
       for (const [key,label,initial,unit] of PARAMETERS) {
         const el = make('div',undefined,'param'); el.dataset.param = key;
         const caption = make('label',label); caption.htmlFor = key;
@@ -59,7 +79,7 @@
     }
     static getConfigElement() { return document.createElement(`${TAG}-editor`); }
     static getStubConfig(hass) {
-      const entity = Object.keys(hass?.states ?? {}).find(id => /^sensor\./.test(id) && hass.states[id]?.attributes?.schema_version === 1 && hass.states[id]?.attributes?.mode === 'shadow');
+      const entity = Object.keys(hass?.states ?? {}).find(id => /^sensor\.[a-z0-9_]+$/.test(id) && (isShadow(hass.states[id]) || isControl(hass.states[id])));
       return {entity:entity ?? 'sensor.uninus_nutriculture_status',show_parameters:true};
     }
     getCardSize() { return this.details.isConnected && this.details.open ? 12 : 4; }
@@ -68,6 +88,7 @@
     invalidate() {
       this.epoch = (this.epoch ?? 0) + 1;
       for (const row of this.rows.values()) { row.operation = null; row.pending = false; }
+      for (const row of this.controlRows.values()) { row.operation = null; row.error = ''; }
     }
     setConfig(config) {
       if (!config || typeof config.entity !== 'string' || !/^sensor\.[a-z0-9_]+$/.test(config.entity)) throw new Error('請選擇狀態 sensor Entity');
@@ -86,7 +107,7 @@
     status() { return this._hass?.states?.[this.config?.entity]; }
     target(row) {
       const status = this.status();
-      if (status?.attributes?.schema_version !== 1 || status?.attributes?.mode !== 'shadow' || !['within_range','out_of_range','invalid'].includes(status?.state)) return {error:'狀態缺失或不相容；禁止儲存'};
+      if (!writable(status)) return {error:'狀態缺失或不相容；禁止儲存'};
       const id = status.attributes.parameter_entities?.[row.key];
       if (typeof id !== 'string' || !/^number\.[a-z0-9_]+$/.test(id)) return {error:'Number 對應無效；禁止儲存'};
       const state = this._hass?.states?.[id];
@@ -151,6 +172,44 @@
         }
       }
     }
+    controlTarget(row) {
+      const status = this.status();
+      if (!isControl(status) || !writable(status)) return {error:'控制狀態缺失或不相容；禁止操作'};
+      if (['refill_enabled','flow_run'].includes(row.key) && status.attributes.capabilities?.refill !== true) return {error:'補水尚未支援；禁止操作'};
+      const id = status.attributes.control_entities?.[row.key];
+      if (typeof id !== 'string' || !new RegExp(`^${row.domain}\\.[a-z0-9_]+$`).test(id)) return {error:'控制 Entity 對應無效；禁止操作'};
+      const state = this._hass?.states?.[id];
+      if (!state || state.state === 'unavailable' || (row.domain === 'switch' && !['on','off'].includes(state.state)) || typeof state.state !== 'string') return {error:'控制 Entity 缺失或無法使用；禁止操作'};
+      return {id,state:state.state,service:row.domain === 'button' ? 'press' : state.state === 'on' ? 'turn_off' : 'turn_on'};
+    }
+    updateControls() {
+      for (const row of this.controlRows.values()) {
+        const target = this.controlTarget(row);
+        if (row.boundTarget !== target.id) { row.boundTarget = target.id; row.error = ''; row.operation = null; }
+        text(row.caption,`${row.label} · ${target.state ?? '不可用'} `);
+        row.button.disabled = !this.isConnected || !!target.error || this.flights.has(target.id);
+        text(row.button,row.domain === 'button' ? row.label : target.state === 'on' ? '關閉' : '開啟');
+        text(row.message,target.error || row.error);
+      }
+    }
+    async invokeControl(row) {
+      const target = this.controlTarget(row);
+      if (row.boundTarget !== target.id) { this.updateControls(); return; }
+      if (!this.isConnected || target.error || this.flights.has(target.id) || !this._hass?.callService) return;
+      const op = {epoch:this.epoch,entity:this.config.entity,target:target.id};
+      this.flights.set(op.target,op); row.operation = op; row.error = ''; this.updateControls();
+      const current = () => this.isConnected && this.epoch === op.epoch && row.operation === op && this.controlTarget(row).id === op.target;
+      try {
+        await this._hass.callService(row.domain,target.service,{entity_id:op.target});
+        if (current()) row.error = '已送出操作；以 Entity 讀回值為準';
+      } catch (error) {
+        if (current()) row.error = `操作失敗：${error?.message ?? String(error)}`;
+      } finally {
+        if (this.flights.get(op.target) === op) this.flights.delete(op.target);
+        if (current()) row.operation = null;
+        if (this.isConnected) this.updateControls();
+      }
+    }
     update() {
       text(this.heading,this.config?.title ?? 'UNiNUS Nutriculture');
       const status = this.status();
@@ -159,15 +218,24 @@
         text(nodes.value,finite(source?.state) ? Number(source.state).toLocaleString(undefined,{maximumFractionDigits:3}) : '—');
         text(nodes.unit,source?.attributes?.unit_of_measurement ?? ({ph:'pH',ec:'mS/cm',level:'m'}[key]));
       }
-      const compatible = status?.attributes?.schema_version === 1 && status?.attributes?.mode === 'shadow';
+      const control = isControl(status), compatible = isShadow(status) || control;
+      text(this.parameterHelp,control ? '每次僅儲存一項，不提供群組原子更新。補水門檻與逾時由後端即時校驗；加養／加酸／獨立混合尚未支援。' : '每次僅儲存一項，不提供群組原子更新。時間參數僅儲存，不控制設備。');
+      text(this.badge,control ? '控制模式 · P2 補水' : '影子監測');
+      text(this.safety,control ? '僅補水控制 · 後端安全校驗 · 尚未提供灌溉許可' : '不控制設備 · 尚未提供灌溉許可');
+      if (control) {
+        if (this.controls.parentNode !== this.root) this.root.insertBefore(this.controls,this.details.parentNode === this.root ? this.details : null);
+        const a = status.attributes;
+        text(this.controlStatus,`流程：${a.flow_state ?? '未知'} · Sensor：${status.state}\n故障：${a.fault ?? '無'} · 本輪：${a.run_id ?? '無'}`);
+        text(this.unsupported,'加養／加酸／獨立混合：尚未支援（P2 不執行）');
+      } else this.controls.remove();
       const labels = {within_range:'讀值在範圍內',out_of_range:'讀值超出範圍',invalid:'來源資料無效'};
-      const warning = !compatible ? '狀態缺失或不相容：僅支援 schema 1 / shadow；禁止儲存。' : labels[status.state] ?? '未知狀態；禁止儲存。';
+      const warning = !compatible ? '狀態缺失或不相容：僅支援 schema 1 / shadow 或 schema 2 / control；禁止儲存。' : control ? (writable(status) ? '控制狀態以原生 Entity 讀回為準' : '未知或不一致狀態；禁止儲存。') : labels[status.state] ?? '未知狀態；禁止儲存。';
       const reasons = Array.isArray(status?.attributes?.reasons) ? status.attributes.reasons.map(String) : [];
       const blocked = Array.from(this.rows.values()).filter(row=>this.target(row).error).length;
       const parameterWarning = compatible && blocked ? `${blocked} 項參數無法儲存；請展開參數檢查 Number Entity。` : '';
       text(this.quality,[warning,parameterWarning,...reasons].filter(Boolean).join('\n'));
       this.quality.classList.toggle('warn',!compatible || status.state !== 'within_range' || blocked>0);
-      this.updateRows();
+      this.updateRows(); this.updateControls();
     }
   }
   class NutricultureEditor extends HTMLElement {
@@ -180,7 +248,7 @@
       for (const [label,input] of [['狀態 Entity',this.entityInput],['標題',this.titleInput],['顯示參數調整',this.showInput]]) {
         const field = make('label',label); field.append(input); this.shadowRoot.append(field);
       }
-      this.shadowRoot.append(make('p','影子監測：不控制設備、尚未提供灌溉許可。'));
+      this.shadowRoot.append(make('p','schema 1 / shadow：不控制設備；schema 2 / control：原生補水控制。兩者皆尚未提供灌溉許可。'));
       this.entityInput.addEventListener('change',()=>this.change('entity',this.entityInput.value));
       this.titleInput.addEventListener('input',()=>this.change('title',this.titleInput.value));
       this.showInput.addEventListener('change',()=>this.change('show_parameters',this.showInput.checked));
@@ -211,5 +279,5 @@
   if (!customElements.get(`${TAG}-editor`)) customElements.define(`${TAG}-editor`,NutricultureEditor);
   if (!customElements.get(TAG)) customElements.define(TAG,NutricultureCard);
   window.customCards = window.customCards || [];
-  if (!window.customCards.some(card=>card.type === TAG)) window.customCards.push({type:TAG,name:'UNiNUS Nutriculture / 養液控制',description:'P1 影子監測與單項參數儲存；不控制設備',preview:true});
+  if (!window.customCards.some(card=>card.type === TAG)) window.customCards.push({type:TAG,name:'UNiNUS Nutriculture / 養液控制',description:'P1 影子監測／P2 原生補水控制與單項參數儲存；尚未提供灌溉許可',preview:true});
 })();

@@ -1,0 +1,45 @@
+BROWSER_VERSION=156.0.8078.4
+test_19_v2_latest_event_validation_and_fail_closed_targets (__main__.BrowserTests.test_19_v2_latest_event_validation_and_fail_closed_targets) ... ok
+test_20_v2_pending_lifecycle_and_new_scope_notices (__main__.BrowserTests.test_20_v2_pending_lifecycle_and_new_scope_notices) ... ERROR
+
+======================================================================
+ERROR: test_20_v2_pending_lifecycle_and_new_scope_notices (__main__.BrowserTests.test_20_v2_pending_lifecycle_and_new_scope_notices)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\UNiNUS Projects\AI project\uninus-nutriculture-card\tests\test_browser.py", line 160, in test_20_v2_pending_lifecycle_and_new_scope_notices
+    p.evaluate("card.hass.callService=(...args)=>{calls.push(args);return Promise.reject(new Error('old-scope-error'))}")
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\UNiNUS Projects\AI project\uninus-nutriculture-card\.venv\Lib\site-packages\playwright\sync_api\_generated.py", line 8531, in evaluate
+    self._sync(
+    ~~~~~~~~~~^
+        self._impl_obj.evaluate(expression=expression, arg=mapping.to_impl(arg))
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\UNiNUS Projects\AI project\uninus-nutriculture-card\.venv\Lib\site-packages\playwright\_impl\_sync_base.py", line 115, in _sync
+    return task.result()
+           ~~~~~~~~~~~^^
+  File "D:\UNiNUS Projects\AI project\uninus-nutriculture-card\.venv\Lib\site-packages\playwright\_impl\_page.py", line 467, in evaluate
+    return await self._main_frame.evaluate(expression, arg)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\UNiNUS Projects\AI project\uninus-nutriculture-card\.venv\Lib\site-packages\playwright\_impl\_frame.py", line 320, in evaluate
+    await self._channel.send(
+    ...<6 lines>...
+    )
+  File "D:\UNiNUS Projects\AI project\uninus-nutriculture-card\.venv\Lib\site-packages\playwright\_impl\_connection.py", line 69, in send
+    return await self._connection.wrap_api_call(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "D:\UNiNUS Projects\AI project\uninus-nutriculture-card\.venv\Lib\site-packages\playwright\_impl\_connection.py", line 559, in wrap_api_call
+    raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+playwright._impl._errors.Error: Page.evaluate: Error: old-scope-error
+    at card.hass.callService (eval at evaluate (:290:30), <anonymous>:1:74)
+    at UtilityScript.evaluate (<anonymous>:297:18)
+    at UtilityScript.<anonymous> (<anonymous>:1:44)
+
+----------------------------------------------------------------------
+Ran 2 tests in 2.527s
+
+FAILED (errors=1)
