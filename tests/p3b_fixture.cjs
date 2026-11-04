@@ -1,0 +1,21 @@
+const fs=require('node:fs');
+const path=require('node:path');
+module.exports=()=>{
+ const states=structuredClone(require('./fixtures/p3a.json'));
+ const a=states['sensor.status'].attributes;
+ a.source_entities={ph:'sensor.ph',ec:'sensor.ec',level:'sensor.level'};
+ a.schema_version=4;a.capabilities={refill:false,nutrient:false,acid:true,mix:false};
+ a.settings_target.service='apply_control_settings_v4';
+ const sKeys=['ph_danger_low','ec_danger_high','ph_high_alarm','ph_high_alarm_seconds'];
+ a.safety_parameters=Object.fromEntries(sKeys.map(k=>[k,a.dosing_parameters[k]]));
+ a.acid_parameters=Object.fromEntries(Object.entries(a.dosing_parameters).filter(([k])=>!sKeys.includes(k)));
+ a.dosing_parameters=null;a.mix_parameters=null;a.acid_phase=null;
+ a.acid_progress={pulse_count:0,reserved_on_seconds:0,stable_count:0};
+ a.output_states={nutrient:'unknown',acid:'off',circulation:'off'};
+ a.stage_states={refill:'unsupported',nutrient:'unsupported',acid:'idle',mix:'unsupported'};
+ delete a.control_entities.nutrient_enabled;
+ delete a.control_entities.refill_enabled;
+ a.control_entities.acid_enabled='switch.actual_acid_enabled';
+ states['switch.actual_acid_enabled']={state:'on',attributes:{}};
+ return states;
+};

@@ -74,6 +74,29 @@ test('schema3 supports nutrient-only native run and rejects inconsistent contrac
     assert.ok(C.prototype.controlTarget.call(x,r).error);
   }
 });
+test('schema4 acid-only strict native controls and Number subset',()=>{
+ const states=require('./p3b_fixture.cjs')(),a=states['sensor.status'].attributes;
+ const o={status:()=>states['sensor.status'],_hass:{states}};
+ assert.equal(C.prototype.controlTarget.call(o,{key:'acid_enabled',domain:'switch'}).id,'switch.actual_acid_enabled');
+ delete a.parameter_entities.ec_high;
+ assert.equal(C.prototype.controlTarget.call(o,{key:'acid_enabled',domain:'switch'}).id,'switch.actual_acid_enabled');
+ for(const mutate of [a=>a.acid_parameters.pulse_seconds=true,a=>a.safety_parameters.extra=1,a=>a.acid_progress.pulse_count=-1,a=>a.stage_states.acid='disabled',a=>a.parameters.extra=1,a=>a.settings_target.service='apply_control_settings']){
+  const fresh=require('./p3b_fixture.cjs')(),x={status:()=>fresh['sensor.status'],_hass:{states:fresh}};mutate(x.status().attributes);
+  assert.ok(C.prototype.controlTarget.call(x,{key:'acid_enabled',domain:'switch'}).error);
+ }
+});
+
+test('v4 rejects outer unknown fields, missing fields and normal parameter range/step violations',()=>{
+ const mutations=[a=>a.untrusted_extra=1,a=>delete a.reasons,a=>a.parameters.ph_low=-.1,a=>a.parameters.mix_duration=.5,a=>a.parameters.level_low=.001,a=>a.flow_state='future',a=>a.acid_phase='future'];
+ for(const mutate of mutations){
+  const states=require('./p3b_fixture.cjs')(),o={status:()=>states['sensor.status'],_hass:{states}};mutate(o.status().attributes);
+  assert.ok(C.prototype.controlTarget.call(o,{key:'acid_enabled',domain:'switch'}).error, String(mutate));
+ }
+ const states=require('./p3b_fixture.cjs')(),o={status:()=>states['sensor.status'],_hass:{states}};
+ Object.assign(o.status().attributes,{friendly_name:'Native status',icon:'mdi:flask',device_class:'enum',options:['idle']});
+ assert.equal(C.prototype.controlTarget.call(o,{key:'acid_enabled',domain:'switch'}).id,'switch.actual_acid_enabled');
+});
+
 test('registration is idempotent with a second resource evaluation',()=>{
   vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../uninus-nutriculture-card.js'),'utf8'),context);
   assert.equal(elements.size,2);assert.equal(context.window.customCards.length,1);

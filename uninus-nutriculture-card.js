@@ -40,8 +40,30 @@
     [null,'starting_circulation','pulsing','confirming_off','mixing','waiting_sample','stabilizing'].includes(a.nutrient_phase) &&
     exact(a.dose_progress,['pulse_count','reserved_on_seconds','stable_count']) && ['pulse_count','stable_count'].every(k=>Number.isSafeInteger(a.dose_progress[k]) && a.dose_progress[k]>=0) && number(a.dose_progress.reserved_on_seconds) && a.dose_progress.reserved_on_seconds>=0 &&
     exact(a.output_states,['nutrient','circulation']) && Object.values(a.output_states).every(v=>['on','off','unknown'].includes(v));
-  const isControl = status => status?.attributes?.mode === 'control' && (status.attributes.schema_version === 2 ? !['nutrient','acid','mix'].some(k=>status.attributes.capabilities?.[k]===true) && !status.attributes.control_entities?.nutrient_enabled : status.attributes.schema_version === 3 && validV3(status.attributes));
-  const writable = status => (isShadow(status) && ['within_range','out_of_range','invalid'].includes(status.state)) || (isControl(status) && (status.attributes.schema_version===3?V3_STATES:FLOW_STATES).includes(status.state) && status.attributes.flow_state === status.state);
+
+  const Q=DOSE.slice(0,9), S=DOSE.slice(9), STAGE_VALUES=['unsupported','idle','starting','waiting_resource','running','stopping','completed','aborted','fault','skipped_disabled','skipped_weekday','blocked_dependency'];
+  const groupMap=(m,rows)=>exact(m,rows.map(r=>r[0]))&&rows.every(([k,,lo,hi,step])=>inRange(m[k],lo,hi,step));
+  const NORMAL_LIMITS={level_low:[0,10,.01],level_high:[0,10,.01],ph_low:[0,14,.1],ph_high:[0,14,.1],ec_low:[0,20,.01],ec_high:[0,20,.01],refill_timeout:[1,1440,1],ec_timeout:[1,1440,1],ph_timeout:[1,1440,1],mix_duration:[1,1440,1]};
+  const V4_KEYS=['schema_version','mode','ready_for_irrigation','source_entities','parameter_entities','parameters','reasons','capabilities','control_entities','allowed_weekdays','stage_states','flow_state','fault','run_id','settings_target','settings_revision','dosing_parameters','acid_parameters','mix_parameters','safety_parameters','nutrient_phase','acid_phase','dose_progress','acid_progress','output_states'];
+  // Only these native HA Entity metadata fields may sit outside our contract.
+  const HA_METADATA=['friendly_name','icon','device_class','options'];
+  const validV4Groups=a=>exact(a.parameters,PARAMETERS.map(r=>r[0]))&&Object.entries(NORMAL_LIMITS).every(([k,limits])=>inRange(a.parameters[k],...limits))&&['level','ph','ec'].every(k=>a.parameters[k+'_low']<a.parameters[k+'_high'])&&groupMap(a.safety_parameters,S)&&
+    (a.dosing_parameters===null||groupMap(a.dosing_parameters,DOSE))&&(a.acid_parameters===null||groupMap(a.acid_parameters,Q))&&(a.mix_parameters===null||groupMap(a.mix_parameters,[Q[0],Q[8]]))&&
+    (a.dosing_parameters===null||S.every(([k])=>a.dosing_parameters[k]===a.safety_parameters[k]))&&
+    exact(a.allowed_weekdays,STAGES)&&STAGES.every(k=>Array.isArray(a.allowed_weekdays[k])&&new Set(a.allowed_weekdays[k]).size===a.allowed_weekdays[k].length&&a.allowed_weekdays[k].every(d=>DAYS.includes(d)));
+  const progress=v=>exact(v,['pulse_count','reserved_on_seconds','stable_count'])&&['pulse_count','stable_count'].every(k=>Number.isSafeInteger(v[k])&&v[k]>=0)&&number(v.reserved_on_seconds)&&v.reserved_on_seconds>=0;
+  const phase=v=>[null,'starting_circulation','pulsing','confirming_off','mixing','waiting_sample','stabilizing'].includes(v);
+  const validV4=a=>V4_KEYS.every(k=>Object.hasOwn(a,k))&&Object.keys(a).every(k=>V4_KEYS.includes(k)||HA_METADATA.includes(k))&&V3_STATES.includes(a.flow_state)&&a.ready_for_irrigation===false&&validV4Groups(a)&&exact(a.capabilities,STAGES)&&STAGES.every(k=>typeof a.capabilities[k]==='boolean')&&
+    ['nutrient','acid','mix'].every((k,i)=>(a[['dosing_parameters','acid_parameters','mix_parameters'][i]]!==null)===a.capabilities[k])&&
+    exact(a.source_entities,['ph','ec','level'])&&Object.values(a.source_entities).every(id=>typeof id==='string'&&/^sensor\.[a-z0-9_]+$/.test(id))&&
+    exact(a.settings_target,['config_entry_id','service'])&&typeof a.settings_target.config_entry_id==='string'&&a.settings_target.config_entry_id.trim()!==''&&a.settings_target.service==='apply_control_settings_v4'&&Number.isSafeInteger(a.settings_revision)&&a.settings_revision>=0&&
+    a.parameter_entities&&typeof a.parameter_entities==='object'&&!Array.isArray(a.parameter_entities)&&Object.entries(a.parameter_entities).every(([k,id])=>PARAMETERS.some(r=>r[0]===k)&&typeof id==='string'&&/^number\.[a-z0-9_]+$/.test(id))&&new Set(Object.values(a.parameter_entities)).size===Object.keys(a.parameter_entities).length&&
+    a.control_entities&&Object.entries(a.control_entities).every(([k,id])=>['automation_enabled','refill_enabled','nutrient_enabled','acid_enabled','mix_enabled','flow_run','emergency_stop','reset_fault'].includes(k)&&typeof id==='string'&&new RegExp(`^${['emergency_stop','reset_fault'].includes(k)?'button':'switch'}\\.[a-z0-9_]+$`).test(id)&&(!k.endsWith('_enabled')||k==='automation_enabled'||a.capabilities[k.replace('_enabled','')]))&&new Set(Object.values(a.control_entities)).size===Object.keys(a.control_entities).length&&
+    exact(a.stage_states,STAGES)&&STAGES.every(k=>STAGE_VALUES.includes(a.stage_states[k]))&&phase(a.nutrient_phase)&&phase(a.acid_phase)&&progress(a.dose_progress)&&progress(a.acid_progress)&&
+    exact(a.output_states,['nutrient','acid','circulation'])&&Object.values(a.output_states).every(v=>['on','off','unknown'].includes(v))&&Array.isArray(a.reasons)&&a.reasons.every(v=>typeof v==='string')&&['fault','run_id'].every(k=>a[k]===null||(typeof a[k]==='string'&&a[k].trim()!==''));
+
+  const isControl = status => status?.attributes?.mode === 'control' && (status.attributes.schema_version === 2 ? !['nutrient','acid','mix'].some(k=>status.attributes.capabilities?.[k]===true) && !status.attributes.control_entities?.nutrient_enabled : (status.attributes.schema_version === 3 && validV3(status.attributes)) || (status.attributes.schema_version === 4 && validV4(status.attributes)));
+  const writable = status => (isShadow(status) && ['within_range','out_of_range','invalid'].includes(status.state)) || (isControl(status) && (status.attributes.schema_version>=3?V3_STATES:FLOW_STATES).includes(status.state) && status.attributes.flow_state === status.state);
   const style = `
     :host{display:block;min-width:0;color:var(--primary-text-color,#213b48);font-family:var(--paper-font-body1_-_font-family,system-ui,sans-serif)}
     *{box-sizing:border-box}ha-card{display:block;border:1px solid var(--divider-color,#d9e4e7);border-radius:var(--ha-card-border-radius,16px);background:var(--ha-card-background,var(--card-background-color,#fff));padding:18px;overflow-wrap:anywhere}
@@ -79,7 +101,7 @@
       this.unsupported = make('p'); this.unsupported.dataset.unsupported = '';
       this.controls.append(this.controlStatus,this.unsupported);
       this.controlRows = new Map();
-      for (const [key,label,domain] of [['automation_enabled','自動化總開關','switch'],['refill_enabled','補水子開關','switch'],['nutrient_enabled','加養子開關','switch'],['flow_run','整輪運行','switch'],['emergency_stop','急停','button'],['reset_fault','復歸','button']]) {
+      for (const [key,label,domain] of [['automation_enabled','自動化總開關','switch'],['refill_enabled','補水子開關','switch'],['nutrient_enabled','加養子開關','switch'],['acid_enabled','加酸子開關','switch'],['mix_enabled','獨立攪拌子開關','switch'],['flow_run','整輪運行','switch'],['emergency_stop','急停','button'],['reset_fault','復歸','button']]) {
         const el = make('div',undefined,'control'); el.dataset.control = key;
         const caption = make('span'), button = make('button',label), message = make('small');
         button.type = 'button'; button.setAttribute('aria-label',label); message.setAttribute('role','status');
@@ -98,7 +120,7 @@
         const button = make('button','儲存'); button.type = 'button'; button.setAttribute('aria-label',`儲存 ${label}`);
         const message = make('div','','message'); message.setAttribute('role','status');
         const row = {key,el,metadata,input,button,message,initial,unit,dirty:false,pending:false,error:''};
-        input.addEventListener('input',()=>{row.dirty = true; row.error = ''; if(this.status()?.attributes?.schema_version===3){this.beginGroup();this.groupMessageText='';} this.updateRows();this.updateGroup();});
+        input.addEventListener('input',()=>{row.dirty = true; row.error = ''; if(this.status()?.attributes?.schema_version>=3){this.beginGroup();this.groupMessageText='';} this.updateRows();this.updateGroup();});
         button.addEventListener('click',()=>this.save(row));
         el.append(caption,input,button,message); this.rows.set(key,row); this.details.append(el);
       }
@@ -113,10 +135,17 @@
         input.addEventListener('input',()=>{this.beginGroup();this.groupMessageText='';this.updateGroup();});
         el.append(caption,input);this.doseDetails.append(el);this.doseRows.set(key,{input});
       }
+      this.acidRows=new Map();this.mixRows=new Map();
+      for(const [name,rows,map] of [['acid',Q,this.acidRows],['mix',[Q[0],Q[8]],this.mixRows]])for(const [key,label,min,max,step,unit] of rows){
+        const el=make('div',undefined,'param');el.dataset[name]=key;const input=make('input');input.type='number';
+        for(const [k,v] of Object.entries({min,max,step}))input.setAttribute(k,String(v));
+        input.addEventListener('input',()=>{this.beginGroup();this.groupMessageText='';this.updateGroup();});
+        el.append(make('label',`${name==='acid'?'加酸':'獨立攪拌'} · ${label} (${unit||'次'})`),input);this.doseDetails.append(el);map.set(key,{input,el});
+      }
       this.weekDetails=make('details');this.weekDetails.dataset.weekDetails='';this.weekDetails.append(make('summary','各階段允許星期'));
       this.weekRows=new Map();
       for(const [i,stage] of STAGES.entries()){
-        const block=make('fieldset');block.append(make('legend',['補水','加養','加酸（未支援）','獨立混合（未支援）'][i]));
+        const block=make('fieldset');block.append(make('legend',['補水','加養','加酸','獨立攪拌'][i]));
         const inputs=new Map();for(const [j,day] of DAYS.entries()){
           const label=make('label',['一','二','三','四','五','六','日'][j]),input=make('input');input.type='checkbox';input.dataset.weekday=stage+'_'+day;
           input.addEventListener('change',()=>{this.beginGroup();this.groupMessageText='';this.updateGroup();});label.prepend(input);block.append(label);inputs.set(day,input);
@@ -175,7 +204,7 @@
     }
     updateRows() {
       if (!this.rows) return;
-      const v3=this.status()?.attributes?.schema_version===3;
+      const v3=this.status()?.attributes?.schema_version>=3;
       for (const row of this.rows.values()) {
         const target = this.target(row);
         row.button.hidden=v3;row.el.classList.toggle('group-param',v3);
@@ -199,7 +228,7 @@
       }
     }
     async save(row) {
-      if(this.status()?.attributes?.schema_version===3)return;
+      if(this.status()?.attributes?.schema_version>=3)return;
       const target = this.target(row);
       if (row.boundTarget !== target.id) { this.updateRows(); return; }
       if (!this.isConnected || this.config?.show_parameters === false || this.flights.has(target.id) || row.pending || !row.dirty || !this.valid(row,target) || !this._hass?.callService) return;
@@ -232,24 +261,34 @@
       return JSON.stringify([this.config?.entity,a?.settings_target,a?.parameter_entities]);
     }
     beginGroup() {
-      if(!this.groupDraft && writable(this.status()) && this.status().attributes.schema_version===3){
+      if(!this.groupDraft && writable(this.status()) && this.status().attributes.schema_version>=3){
         const a=this.status().attributes;
         this.groupDraft={identity:this.groupIdentity(),revision:a.settings_revision,entry:a.settings_target.config_entry_id};
       }
     }
     groupValues() {
+      if(this.status()?.attributes?.schema_version===4){
+        const a=this.status().attributes, read=map=>Object.fromEntries([...map].map(([k,r])=>[k,r.input.value===''?null:Number(r.input.value)]));
+        const all=read(this.doseRows),safety=Object.fromEntries(S.map(([k])=>[k,all[k]]));
+        return {parameters:read(this.rows),dosing_parameters:a.capabilities.nutrient?{...all,...safety}:null,acid_parameters:a.capabilities.acid?read(this.acidRows):null,mix_parameters:a.capabilities.mix?read(this.mixRows):null,safety_parameters:safety,allowed_weekdays:Object.fromEntries([...this.weekRows].map(([k,inputs])=>[k,[...inputs].filter(([,input])=>input.checked).map(([d])=>d)]))};
+      }
       return {parameters:Object.fromEntries([...this.rows].map(([k,r])=>[k,r.input.value===''?null:Number(r.input.value)])),
         dosing_parameters:Object.fromEntries([...this.doseRows].map(([k,r])=>[k,r.input.value===''?null:Number(r.input.value)])),
         allowed_weekdays:Object.fromEntries([...this.weekRows].map(([k,inputs])=>[k,[...inputs].filter(([,input])=>input.checked).map(([d])=>d)]))};
     }
     groupValid(values) {
+      if(this.status()?.attributes?.schema_version===4){
+        if(!validV4Groups(values)||![...this.rows.values()].every(r=>this.valid(r,this.target(r))))return false;
+        const p=values.parameters,s=values.safety_parameters;
+        return p.level_low<p.level_high&&p.ph_low<p.ph_high&&p.ec_low<p.ec_high&&s.ph_danger_low<p.ph_low&&s.ec_danger_high>p.ec_high&&[values.dosing_parameters,values.acid_parameters].every(d=>d===null||d.pulse_seconds<=d.max_total_on_seconds);
+      }
       if(!validGroups(values) || ![...this.rows.values()].every(r=>this.valid(r,this.target(r))))return false;
       const p=values.parameters,d=values.dosing_parameters;
       return p.level_low<p.level_high && p.ph_low<p.ph_high && p.ec_low<p.ec_high && d.ph_danger_low<p.ph_low && d.ec_danger_high>p.ec_high && d.pulse_seconds<=d.max_total_on_seconds;
     }
     updateGroup() {
       if(!this.groupPanel)return;
-      const status=this.status(),a=status?.attributes,v3=a?.schema_version===3;
+      const status=this.status(),a=status?.attributes,v3=a?.schema_version>=3;
       text(this.details.firstChild,v3?'參數調整 · 整組 Apply / Cancel':'參數調整 · 單項儲存');
       if(!v3){this.groupPanel.remove();this.groupDraft=null;this.groupOperation=null;return;}
       if(this.groupPanel.parentNode!==this.details)this.details.append(this.groupPanel);
@@ -263,10 +302,14 @@
       const pending=!!this.groupOperation, usable=writable(status);
       if(!this.groupDraft){
         for(const [k,r] of this.rows){const v=a?.parameters?.[k];if(r.input.value!==String(v ?? ''))r.input.value=String(v ?? '');r.dirty=false;}
-        for(const [k,r] of this.doseRows){const v=String(a?.dosing_parameters?.[k] ?? '');if(r.input.value!==v)r.input.value=v;}
+        for(const [k,r] of this.doseRows){const v=String((a?.schema_version===4&&S.some(r=>r[0]===k)?a?.safety_parameters?.[k]:a?.dosing_parameters?.[k]) ?? '');if(r.input.value!==v)r.input.value=v;}
         for(const [stage,inputs] of this.weekRows)for(const [day,input] of inputs)input.checked=a?.allowed_weekdays?.[stage]?.includes(day)??false;
       }
-      for(const r of this.doseRows.values())r.input.disabled=!usable || pending;
+      for(const [k,r] of this.doseRows){r.input.disabled=!usable||pending||(a?.schema_version===4&&Q.some(v=>v[0]===k)&&!a.capabilities.nutrient);r.input.parentNode.hidden=a?.schema_version===4&&Q.some(v=>v[0]===k)&&!a.capabilities.nutrient;}
+      for(const [name,map] of [['acid',this.acidRows],['mix',this.mixRows]])for(const [k,r] of map){
+        r.el.hidden=a?.schema_version!==4||!a.capabilities?.[name];r.input.disabled=!usable||pending||r.el.hidden;
+        if(!this.groupDraft){const v=String(a?.[name+'_parameters']?.[k]??'');if(r.input.value!==v)r.input.value=v;}
+      }
       for(const inputs of this.weekRows.values())for(const input of inputs.values())input.disabled=!usable || pending;
       const values=this.groupValues(),valid=this.groupValid(values);
       const conflict=this.groupDraft && a?.settings_revision!==this.groupDraft.revision;
@@ -276,6 +319,7 @@
       text(this.groupMessage,(!usable?'狀態缺失或不相容；禁止儲存':this.groupMessageText) || (conflict?`settings_conflict：保留草稿；最新 revision ${a.settings_revision}，原 revision ${this.groupDraft.revision}。Cancel 重新載入最新值：${JSON.stringify({parameters:a.parameters,dosing_parameters:a.dosing_parameters,allowed_weekdays:a.allowed_weekdays})}`:this.groupDraft&&!valid?'請檢查完整群組的型別、範圍、間距與上下限':'尚未套用；後端設定為準'));
     }
     sameGroups(a,b) {
+      if(a.schema_version===4)return ['parameters','dosing_parameters','acid_parameters','mix_parameters','safety_parameters'].every(k=>b[k]===null?a[k]===null:a[k]!==null&&Object.keys(b[k]).every(key=>a[k]?.[key]===b[k][key]))&&STAGES.every(k=>JSON.stringify(a.allowed_weekdays[k])===JSON.stringify(b.allowed_weekdays[k]));
       return ['parameters','dosing_parameters'].every(group=>Object.keys(b[group]).every(k=>a[group]?.[k]===b[group][k])) && STAGES.every(k=>JSON.stringify([...(a.allowed_weekdays?.[k]??[])].sort())===JSON.stringify([...b.allowed_weekdays[k]].sort()));
     }
     async applyGroup() {
@@ -288,7 +332,7 @@
       const key='settings:'+op.entry;this.flights.set(key,op);this.groupOperation=op;this.groupMessageText='套用中；等待服務與後端 revision / 值讀回';this.update();
       const current=()=>this.isConnected && this.epoch===op.epoch && this.groupOperation===op && this.groupIdentity()===op.identity;
       try {
-        await this._hass.callService('uninus_nutriculture','apply_control_settings',{config_entry_id:op.entry,expected_revision:op.revision,...values});
+        await this._hass.callService('uninus_nutriculture',a.settings_target.service,{config_entry_id:op.entry,expected_revision:op.revision,...values});
         if(current()){op.settled=true;this.groupMessageText='已送出；等待後端 revision / 值讀回一致';}
       } catch(error){if(current()){this.groupOperation=null;this.groupMessageText=`套用失敗（保留草稿）：${error?.message??String(error)}`;}}
       finally {if(this.flights.get(key)===op)this.flights.delete(key);if(current() || this.isConnected)this.update();}
@@ -297,11 +341,12 @@
       const status = this.status();
       if (!isControl(status) || !writable(status)) return {error:'控制狀態缺失或不相容；禁止操作'};
       const a=status.attributes;
-      if (row.key==='nutrient_enabled' && (a.schema_version!==3 || !a.capabilities.nutrient)) return {error:'加養尚未支援；禁止操作'};
+      if (row.key==='nutrient_enabled' && (a.schema_version<3 || !a.capabilities.nutrient)) return {error:'加養尚未支援；禁止操作'};
+      if(['acid_enabled','mix_enabled'].includes(row.key)&& (a.schema_version!==4||!a.capabilities[row.key.replace('_enabled','')]))return {error:'階段尚未支援；禁止操作'};
       if (row.key==='refill_enabled' && a.capabilities?.refill!==true) return {error:'補水尚未支援；禁止操作'};
       if (row.key==='flow_run') {
         if (a.schema_version===2 && a.capabilities?.refill!==true) return {error:'補水尚未支援；禁止操作'};
-        if (a.schema_version===3) {
+        if (a.schema_version>=3) {
           const run=this._hass?.states?.[a.control_entities.flow_run];
           if (run?.state!=='on') {
             const selected=STAGES.filter(k=>this._hass?.states?.[a.control_entities[`${k}_enabled`]]?.state==='on');
@@ -316,11 +361,18 @@
       return {id,state:state.state,service:row.domain === 'button' ? 'press' : state.state === 'on' ? 'turn_off' : 'turn_on'};
     }
     updateControls() {
-      const v3=this.status()?.attributes?.schema_version===3;
+      this.p3bRows=this.p3bRows||new Map();
+      for(const key of ['acid_enabled','mix_enabled']){
+        if(this.controlRows.has(key))this.p3bRows.set(key,this.controlRows.get(key));
+        if(this.status()?.attributes?.schema_version===4){if(this.p3bRows.has(key))this.controlRows.set(key,this.p3bRows.get(key));}
+        else if(this.controlRows.has(key)){this.controlRows.get(key).el.remove();this.controlRows.delete(key);}
+      }
+      const v3=this.status()?.attributes?.schema_version>=3;
       if(v3 && this.nutrientRow)this.controlRows.set('nutrient_enabled',this.nutrientRow);
       if(!v3 && this.controlRows.has('nutrient_enabled')){this.nutrientRow=this.controlRows.get('nutrient_enabled');this.nutrientRow.el.remove();this.controlRows.delete('nutrient_enabled');}
       for (const row of this.controlRows.values()) {
-        if(row.key==='nutrient_enabled' && this.status()?.attributes?.schema_version!==3){row.el.remove();continue;}
+        row.el.hidden=['acid_enabled','mix_enabled'].includes(row.key)&&this.status()?.attributes?.schema_version!==4;
+        if(row.key==='nutrient_enabled' && this.status()?.attributes?.schema_version<3){row.el.remove();continue;}
         if(row.el.parentNode!==this.controls)this.controls.insertBefore(row.el,this.controlRows.get('flow_run').el);
         const target = this.controlTarget(row);
         if (row.boundTarget !== target.id) { row.boundTarget = target.id; row.error = ''; row.operation = null; }
@@ -358,16 +410,16 @@
       }
       const control = isControl(status), compatible = isShadow(status) || control;
       text(this.parameterHelp,control ? '每次僅儲存一項，不提供群組原子更新。補水門檻與逾時由後端即時校驗；加養／加酸／獨立混合尚未支援。' : '每次僅儲存一項，不提供群組原子更新。時間參數僅儲存，不控制設備。');
-      text(this.badge,control ? status.attributes.schema_version===3?'控制模式 · P3 加養 / 群組設定':'控制模式 · P2 補水' : '影子監測');
-      text(this.safety,control ? status.attributes.schema_version===3?'原生控制 · 後端安全校驗 · 尚未提供灌溉許可':'僅補水控制 · 後端安全校驗 · 尚未提供灌溉許可' : '不控制設備 · 尚未提供灌溉許可');
+      text(this.badge,control ? status.attributes.schema_version>=3?'控制模式 · P3 加養 / 群組設定':'控制模式 · P2 補水' : '影子監測');
+      text(this.safety,control ? status.attributes.schema_version>=3?'原生控制 · 後端安全校驗 · 尚未提供灌溉許可':'僅補水控制 · 後端安全校驗 · 尚未提供灌溉許可' : '不控制設備 · 尚未提供灌溉許可');
       if (control) {
         if (this.controls.parentNode !== this.root) this.root.insertBefore(this.controls,this.details.parentNode === this.root ? this.details : null);
         const a = status.attributes;
         text(this.controlStatus,`流程：${a.flow_state ?? '未知'} · Sensor：${status.state}\n故障：${a.fault ?? '無'} · 本輪：${a.run_id ?? '無'}`);
-        text(this.unsupported,a.schema_version===3?`加養：${a.capabilities.nutrient?'原生映射已支援':'尚未支援（引擎未接通）'} · 加酸／獨立混合：尚未支援\n養階段：${a.stage_states.nutrient} · phase：${a.nutrient_phase??'無'} · 脈衝 ${a.dose_progress.pulse_count} · ON 預算 ${a.dose_progress.reserved_on_seconds}s · 穩定 ${a.dose_progress.stable_count}\n輸出：養 ${a.output_states.nutrient} / 循環 ${a.output_states.circulation}`:'加養／加酸／獨立混合：尚未支援（P2 不執行）');
+        text(this.unsupported,a.schema_version===4?`加酸：${a.stage_states.acid} · phase ${a.acid_phase??'無'} · 脈衝 ${a.acid_progress.pulse_count} · ON ${a.acid_progress.reserved_on_seconds}s · 穩定 ${a.acid_progress.stable_count}\n獨立攪拌：${a.stage_states.mix} · 酸輸出 ${a.output_states.acid} / 循環 ${a.output_states.circulation}`:a.schema_version>=3?`加養：${a.capabilities.nutrient?'原生映射已支援':'尚未支援（引擎未接通）'} · 加酸／獨立混合：尚未支援\n養階段：${a.stage_states.nutrient} · phase：${a.nutrient_phase??'無'} · 脈衝 ${a.dose_progress.pulse_count} · ON 預算 ${a.dose_progress.reserved_on_seconds}s · 穩定 ${a.dose_progress.stable_count}\n輸出：養 ${a.output_states.nutrient} / 循環 ${a.output_states.circulation}`:'加養／加酸／獨立混合：尚未支援（P2 不執行）');
       } else this.controls.remove();
       const labels = {within_range:'讀值在範圍內',out_of_range:'讀值超出範圍',invalid:'來源資料無效'};
-      const warning = !compatible ? '狀態缺失或不相容：僅支援 schema 1 / shadow 或 schema 2 / 3 control；禁止儲存。' : control ? (writable(status) ? '控制狀態以原生 Entity 讀回為準' : '未知或不一致狀態；禁止儲存。') : labels[status.state] ?? '未知狀態；禁止儲存。';
+      const warning = !compatible ? '狀態缺失或不相容：僅支援 schema 1 / shadow 或 schema 2 / 3 / 4 control；禁止儲存。' : control ? (writable(status) ? '控制狀態以原生 Entity 讀回為準' : '未知或不一致狀態；禁止儲存。') : labels[status.state] ?? '未知狀態；禁止儲存。';
       const reasons = Array.isArray(status?.attributes?.reasons) ? status.attributes.reasons.map(String) : [];
       const blocked = Array.from(this.rows.values()).filter(row=>this.target(row).error).length;
       const parameterWarning = compatible && blocked ? `${blocked} 項參數無法儲存；請展開參數檢查 Number Entity。` : '';

@@ -2,18 +2,22 @@
 
 ## 目前開發狀態與完整目標
 
+**P3b 加酸／獨立攪拌／S4：來源已接通並完成兩審；完整 P3c 編排尚未完成。**
+
+P3a 工程來源已交付，兩審與功能來源 CI 已完成，見 [P3A_PUBLICATION.md](docs/P3A_PUBLICATION.md)。本倉 P3b 加酸、獨立攪拌與 S4/schema4 已接通唯一後端並完成獨立規格及品質兩審；已審來源的 295 項 native 假硬體測試不代表真 HA／HACS／實機驗收。P3c 四階段可編順序／合法重疊／相對延遲與條件／星期及真正有效流程預覽尚未完成，完整 P3 的 Issue #3 保持 OPEN；本文件不更新遠端 Issue。P3b 來源交付不必等待完整 P3。P3b 遠端 CI 只以最終 commit 的實際 Actions 為準，不以本機 gate 代替；沒有內建 scheduler 或獨立 stage_link，未建立 tag/release 或部署。
+
 **P3a 加養工程來源已推送，獨立規格／品質與功能來源的遠端 CI 均通過；未建立正式發行或部署實機。** 詳見 [P3A_PUBLICATION.md](docs/P3A_PUBLICATION.md)。
 
 - 本機已接通原生 Options、整組參數／星期 CAS、schema3 Card，以及必要循環→加養脈衝→中點停泵→混合→新樣本穩定確認。設定保存不致動；原生 Switch 與外部 `start_flow` 共用後端。
-- 隔離原生回歸、實際 Card 的設定與加養跨層已執行；都是假硬體，不是原 HA／HACS／實機驗收。精確來源與剩餘關卡記錄在後端工作樹 `docs/P3A_LOCAL_CHECKPOINT.json` 與 `docs/P3A_REVIEW_CANDIDATE.md`（尚未發布，不假設遠端已有這些檔案）。
-- **尚未交付的主要功能仍是加酸、獨立攪拌、四階段可編順序／合法重疊／相對延遲與條件／星期／預覽。** P3a 只是開發順序，不代表整個 P3，也不能把核心編排延至 P5。
+- 隔離原生回歸、實際 Card 的設定與加養跨層已執行；都是假硬體，不是原 HA／HACS／實機驗收。精確來源與剩餘關卡記錄在後端工作樹 `docs/P3A_LOCAL_CHECKPOINT.json` 與 `docs/P3A_REVIEW_CANDIDATE.md`（P3a 來源交付範圍以 P3A_PUBLICATION.md 為準）。
+- **P3b 加酸與獨立攪拌已接通；尚未交付的是 P3c 四階段可編順序／合法重疊／相對延遲與條件／星期及真正預覽。** P3a 只是開發順序，不代表整個 P3，也不能把核心編排延至 P5。
 - 配方、通知／外部結果、品質與灌溉許可仍屬 P4；目前 `ready_for_irrigation` 固定 false。沒有內建排程器、獨立 stage_link 或瀏覽器關泵計時器。
 - 已凍結的工程策略不再反覆要求使用者逐項決定；實際設備保護、最低液位與來源採樣能力仍由每槽 commissioning 明確確認。
 
-目標對齊與有限後續順序見[GOAL_ALIGNMENT.md](docs/GOAL_ALIGNMENT.md)。下方 P2 段落描述已發布基線，不代表 P3a 工作樹不存在。
+目標對齊與有限後續順序見[GOAL_ALIGNMENT.md](docs/GOAL_ALIGNMENT.md)。下方 P2 段落是已發布基線的歷史範圍，不限制本倉 P3a／P3b 已提供的功能；現況以上方交付狀態為準。
 
 
-## 已發布 P2 基線：隔離測試入口與限制
+## 已發布 P2 基線：隔離測試入口與限制（歷史範圍）
 
 **P2補水候選已通過獨立SPEC與品質／安全審查；未部署原HA，不應直接接管實機。**完整結果與交付界線見[P2_ACCEPTANCE.md](docs/P2_ACCEPTANCE.md)。
 
@@ -87,7 +91,7 @@ parameters:
 reasons: []
 ```
 
-本卡只使用狀態中的明確映射，**不猜測 Number ID**。來源讀值來自 `hass.states`；`parameters` 只供無法取得 Number 時的唯讀參考，不能授權儲存。Number 缺失、不在 `number.*`、值無效或 metadata 無效，該列禁止儲存。只接受合法的 schema1/shadow 或 schema2/3 control 狀態；schema2 的 `flow_state` 還必須與 Entity state 一致，其他契約或狀態缺失／未知時全列禁止儲存。來源無效但狀態契約仍合法時，可調整健康的 Number 參數；這不是直接設備操作。
+本卡只使用狀態中的明確映射，**不猜測 Number ID**。來源讀值來自 `hass.states`；`parameters` 只供無法取得 Number 時的唯讀參考，不能授權儲存。Number 缺失、不在 `number.*`、值無效或 metadata 無效，該列禁止儲存。只接受合法的 schema1/shadow 或 schema2/3/4 control 狀態；schema2 的 `flow_state` 還必須與 Entity state 一致，其他契約或狀態缺失／未知時全列禁止儲存。來源無效但狀態契約仍合法時，可調整健康的 Number 參數；這不是直接設備操作。
 
 | 參數 | 契約預設值 | 單位 |
 | --- | ---: | --- |
@@ -115,7 +119,7 @@ hass.callService('number', 'set_value', {
 });
 ```
 
-schema1不顯示控制操作；schema2另提供總/補水/整輪Switch與急停/復歸，僅呼叫後端映射的switch.turn_on/turn_off及button.press，不直接操作實體泵或瀏覽器計時。v1/v2 每次單項儲存獨立；本機 schema3 使用整組 Apply/Cancel 與 CAS，後端跨欄位驗證與權限仍是最終權威。服務拒絕保留草稿及錯誤。服務成功僅顯示已送出，顯示值以 Number Entity 讀回為準，不捏造成功讀回。
+schema1不顯示控制操作；schema2另提供總/補水/整輪Switch與急停/復歸，僅呼叫後端映射的switch.turn_on/turn_off及button.press，不直接操作實體泵或瀏覽器計時。v1/v2 每次單項儲存獨立；schema3 加養及 schema4 酸／獨立混合使用整組 Apply/Cancel 與 CAS，後端跨欄位驗證與權限仍是最終權威。服務拒絕保留草稿及錯誤。服務成功僅顯示已送出，顯示值以 Number Entity 讀回為準，不捏造成功讀回。
 
 切換狀態 Entity 會清除舊草稿；Number 映射改變亦清除該列草稿並提示重新輸入。每個請求擷取當時 Entity／目標／值與世代，舊成功或失敗不會改寫新的草稿或訊息。未完成的同一目標請求，在同一張卡片重新設定或移除再掛載後仍保持寫入鎖，直到原 Promise 結束。已送出的後端呼叫無法由前端取消或回滾。
 
@@ -127,7 +131,7 @@ schema1不顯示控制操作；schema2另提供總/補水/整輪Switch與急停/
 
 ## 分期狀態
 
-- 已發布 P2：補水原生操作與 schema2 已實作並審查；本機 P3a 另支援 schema3 加養及群組設定，並已完成兩審與功能來源 CI。酸／獨立混合 capability 仍未支援，實機尚未驗收。
+- 已發布 P2：補水原生操作與 schema2 已實作並審查；本機 P3a 另支援 schema3 加養及群組設定，並已完成兩審與功能來源 CI。P3b schema4 已支援酸／獨立混合能力，實機尚未驗收。
 - P3：四階段可配置順序/重疊/相對延遲與條件、每階段七日複選；最小可排序階段列＋開始條件＋並行組＋預覽、加藥/混合/資源仲裁、成組原子參數與版本衝突處理。
 - P4：配方、外部action/結果互通與通知、完成/品質/灌溉許可介面。何時啟動整輪由外部排程/HA automation決定；不建排程器、不匯入排程、不管理外部腳本/旁支。星期只判允許，不自動產生工作；混合/脈衝/安全期限仍屬後端。
 - P5：進階視覺化編輯器、手機/鍵盤體驗、診斷/歷史與完整多槽產品；不是把核心可配置流程延到P5。

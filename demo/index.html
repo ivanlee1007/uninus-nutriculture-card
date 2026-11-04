@@ -10,7 +10,7 @@
 <main>
   <h1>模擬資料 · 非即時系統</h1>
   <p>完全離線展示：沒有 Home Assistant 連線、權杖或實體設備。此頁的「儲存」只改變記憶體中的模擬 Number 或群組設定，不含加養執行引擎。</p>
-  <label>情境 <select id="scenario"><option value="within_range">範圍內</option><option value="out_of_range">超出範圍</option><option value="invalid">來源無效</option><option value="active">不支援的 active 模式</option><option value="control">v2 補水控制（僅模擬）</option><option value="control_rejected">v2 操作拒絕（僅模擬）</option><option value="settings">v3 群組設定（僅模擬；加養引擎未接通）</option></select></label>
+  <label>情境 <select id="scenario"><option value="within_range">範圍內</option><option value="out_of_range">超出範圍</option><option value="invalid">來源無效</option><option value="active">不支援的 active 模式</option><option value="control">v2 補水控制（僅模擬）</option><option value="control_rejected">v2 操作拒絕（僅模擬）</option><option value="settings">v3 群組設定（僅模擬；加養引擎未接通）</option><option value="settings4">v4 加酸／獨立攪拌（僅記憶體模擬）</option></select></label>
   <uninus-nutriculture-card></uninus-nutriculture-card>
   <h2>模擬呼叫紀錄</h2><pre id="log">尚無呼叫</pre>
 </main>
@@ -36,15 +36,17 @@
   const hass={states,async callService(domain,service,data){
     document.querySelector('#log').textContent=JSON.stringify({simulation:true,domain,service,data},null,2);
     if(domain==='number'&&service==='set_value'&&Object.values(mapping).includes(data.entity_id)&&Number.isFinite(data.value)) states[data.entity_id].state=String(data.value);
-    else if(scenario==='settings'&&domain==='uninus_nutriculture'&&service==='apply_control_settings') {
+    else if(['settings','settings4'].includes(scenario)&&domain==='uninus_nutriculture'&&service===(scenario==='settings4'?'apply_control_settings_v4':'apply_control_settings')) {
       const a=states['sensor.demo_status'].attributes;
       if(data.config_entry_id!==a.settings_target.config_entry_id||data.expected_revision!==a.settings_revision)throw new Error('settings_conflict');
-      const changed=JSON.stringify([a.parameters,a.dosing_parameters,a.allowed_weekdays])!==JSON.stringify([data.parameters,data.dosing_parameters,data.allowed_weekdays]);
-      a.parameters=structuredClone(data.parameters);a.dosing_parameters=structuredClone(data.dosing_parameters);a.allowed_weekdays=structuredClone(data.allowed_weekdays);
+      const groups=scenario==='settings4'?['parameters','dosing_parameters','acid_parameters','mix_parameters','safety_parameters','allowed_weekdays']:['parameters','dosing_parameters','allowed_weekdays'];
+      const changed=JSON.stringify(groups.map(k=>a[k]))!==JSON.stringify(groups.map(k=>data[k]));
+      for(const key of groups)a[key]=structuredClone(data[key]);
+
       if(changed)a.settings_revision++;
       for(const key of keys)states[mapping[key]].state=String(a.parameters[key]);
     }
-    else if((scenario.startsWith('control')||scenario==='settings')&&Object.values(controls).includes(data.entity_id)) {
+    else if((scenario.startsWith('control')||['settings','settings4'].includes(scenario))&&Object.values(controls).includes(data.entity_id)) {
       if(scenario==='control_rejected') throw new Error('simulated_rejection');
       if(domain==='switch'&&data.entity_id.startsWith('switch.')&&['turn_on','turn_off'].includes(service)) {
         states[data.entity_id].state=service==='turn_on'?'on':'off';
@@ -61,12 +63,26 @@
   document.querySelector('#scenario').addEventListener('change',event=>{
     scenario=event.target.value;
     const status=states['sensor.demo_status'];
-    const control=scenario.startsWith('control')||scenario==='settings';
+    const control=scenario.startsWith('control')||['settings','settings4'].includes(scenario);
     status.state=control?'idle':scenario==='active'?'within_range':scenario;
     Object.assign(status.attributes,{schema_version:scenario==='settings'?3:control?2:1,mode:control?'control':scenario==='active'?'active':'shadow',flow_state:control?'idle':null,fault:null,run_id:null,
       control_entities:controls,capabilities:{refill:true,nutrient:false,acid:false,mix:false},stage_states:{refill:'idle',nutrient:'unsupported',acid:'unsupported',mix:'unsupported'},allowed_weekdays:{refill:['mon','tue','wed','thu','fri','sat','sun'],nutrient:[],acid:[],mix:[]}});
     status.attributes.parameters=Object.fromEntries(keys.map(key=>[key,Number(states[mapping[key]].state)]));
     if(scenario==='settings')Object.assign(status.attributes,{settings_target:{config_entry_id:'demo-configuration',service:'apply_control_settings'},settings_revision:1,dosing_parameters:structuredClone(defaultDosing),nutrient_phase:null,dose_progress:{pulse_count:0,reserved_on_seconds:0,stable_count:0},output_states:{nutrient:'off',circulation:'off'}});
+    if(scenario==='settings4') {
+      controls.acid_enabled='switch.demo_acid_enabled';controls.mix_enabled='switch.demo_mix_enabled';
+      for(const id of Object.values(controls))if(!states[id])states[id]={state:'off',attributes:{}};
+      const {ph_danger_low,ec_danger_high,ph_high_alarm,ph_high_alarm_seconds,...q}=defaultDosing;
+      // Entirely local declarations: no physical device protection is certified.
+      Object.assign(status.attributes,{schema_version:4,mode:'control',ready_for_irrigation:false,
+        settings_target:{config_entry_id:'demo-configuration-v4',service:'apply_control_settings_v4'},settings_revision:1,
+        capabilities:{refill:true,nutrient:false,acid:true,mix:true},
+        stage_states:{refill:'idle',nutrient:'unsupported',acid:'idle',mix:'idle'},
+        dosing_parameters:null,acid_parameters:{...q},mix_parameters:{safe_min_level_m:.5,flow_timeout_seconds:5400},
+        safety_parameters:{ph_danger_low,ec_danger_high,ph_high_alarm,ph_high_alarm_seconds},
+        nutrient_phase:null,acid_phase:null,dose_progress:{pulse_count:0,reserved_on_seconds:0,stable_count:0},
+        acid_progress:{pulse_count:0,reserved_on_seconds:0,stable_count:0},output_states:{nutrient:'unknown',acid:'off',circulation:'off'}});
+    } else { delete controls.acid_enabled;delete controls.mix_enabled; }
     for(const id of Object.values(controls)) states[id].state=id.startsWith('switch.')?'off':'unknown';
     status.attributes.reasons=scenario==='out_of_range'?['ph_out_of_range']:scenario==='invalid'?['source_ph_unavailable']:[];
     states['sensor.demo_ph'].state=scenario==='invalid'?'unavailable':scenario==='out_of_range'?'6.2':'5.6';

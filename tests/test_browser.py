@@ -69,6 +69,71 @@ class BrowserTests(unittest.TestCase):
     def nutrient_fixture(self):
         self.page.evaluate("""states=>{window.p3states=states; card.hass={states,callService:(...args)=>{calls.push(args);return Promise.resolve()}};}""",json.loads((ROOT/'tests/fixtures/p3a.json').read_text()))
 
+    def test_41_v4_demo_memory_only_apply_cancel_reload(self):
+        p = self.page
+        requests = []
+        p.on('request', lambda r: requests.append(r.url))
+        p.goto((ROOT/'demo'/'index.html').as_uri())
+        self.assertEqual(p.locator('#scenario option[value="settings4"]').count(), 1)
+        p.locator('#scenario').select_option('settings4')
+        self.assertTrue(p.evaluate('card.controls.isConnected'))
+        p.evaluate('card.details.open=true;card.doseDetails.open=true')
+        p.locator('[data-acid="pulse_seconds"] input').fill('3')
+        p.locator('[data-group-cancel]').click()
+        self.assertEqual(p.locator('[data-acid="pulse_seconds"] input').input_value(), '2')
+        p.locator('[data-acid="pulse_seconds"] input').fill('3')
+        p.locator('[data-group-apply]').click()
+        self.assertIn('已套用', p.locator('[data-group-message]').inner_text())
+        result = json.loads(p.locator('#log').inner_text())
+        self.assertEqual(result['service'], 'apply_control_settings_v4')
+        self.assertIsNone(result['data']['dosing_parameters'])
+        p.reload()
+        p.locator('#scenario').select_option('settings4')
+        self.assertEqual(p.evaluate("card.hass.states['sensor.demo_status'].attributes.acid_parameters.pulse_seconds"), 2)
+        self.assertEqual([u for u in requests if not u.startswith('file:')], [])
+
+    def test_42_v4_range_null_subset_and_expired_mutation(self):
+        import subprocess
+        states=json.loads(subprocess.check_output(['node','-e',"console.log(JSON.stringify(require('./tests/p3b_fixture.cjs')()))"],cwd=ROOT))
+        p=self.page
+        p.evaluate("states=>{card.hass={states,callService:(...args)=>{calls.push(args);return Promise.resolve()}}}",states)
+        p.evaluate('card.details.open=true;card.doseDetails.open=true')
+        p.locator('[data-param="ph_low"] input').fill('5.3')
+        self.assertFalse(p.locator('[data-group-apply]').is_disabled())
+        p.evaluate("delete card.hass.states['sensor.status'].attributes.parameter_entities.ec_high;card.hass=card.hass")
+        self.assertTrue(p.locator('[data-group-apply]').is_disabled())
+        self.assertFalse(p.locator('[data-control="acid_enabled"] button').is_disabled())
+        p.evaluate("card.hass.states['sensor.status'].attributes.acid_parameters.pulse_seconds=1.5;card.hass=card.hass;card.applyGroup()")
+        self.assertEqual(p.evaluate('calls'), [])
+        self.assertTrue(p.evaluate("!!card.controlTarget({key:'acid_enabled',domain:'switch'}).error"))
+        self.assertFalse(p.evaluate('card.controls.isConnected'))
+
+    def test_40_v4_acid_groups_native_controls_cancel_apply(self):
+        import subprocess
+        states=json.loads(subprocess.check_output(['node','-e',"console.log(JSON.stringify(require('./tests/p3b_fixture.cjs')()))"],cwd=ROOT))
+        self.page.evaluate("states=>{card.hass={states,callService:(...args)=>{calls.push(args);return Promise.resolve()}}}",states)
+        p=self.page
+        row=p.locator('[data-control="acid_enabled"] button')
+        self.assertFalse(row.is_disabled())
+        row.click()
+        self.assertEqual(p.evaluate('calls.at(-1)'),['switch','turn_off',{'entity_id':'switch.actual_acid_enabled'}])
+        p.locator('summary').first.click()
+        p.locator('[data-dose-details] summary').click()
+        p.locator('[data-acid="pulse_seconds"] input').fill('3')
+        p.locator('[data-group-cancel]').click()
+        self.assertEqual(len(p.evaluate('calls')),1)
+        p.locator('[data-acid="pulse_seconds"] input').fill('3')
+        p.locator('[data-group-apply]').click()
+        call=p.evaluate('calls.at(-1)')
+        self.assertEqual(call[:2],['uninus_nutriculture','apply_control_settings_v4'])
+        self.assertIsNone(call[2]['dosing_parameters'])
+        self.assertEqual(call[2]['acid_parameters']['pulse_seconds'],3)
+        self.assertIsNone(call[2]['mix_parameters'])
+        self.assertEqual(len(call[2]['safety_parameters']),4)
+        self.assertNotIn('已套用',p.locator('[data-group-message]').inner_text())
+        p.evaluate("()=>{const a=card.hass.states['sensor.status'].attributes,d=calls.at(-1)[2];for(const k of ['parameters','dosing_parameters','acid_parameters','mix_parameters','safety_parameters','allowed_weekdays'])a[k]=d[k];a.settings_revision++;card.hass=card.hass}")
+        self.assertIn('已套用',p.locator('[data-group-message]').inner_text())
+
     def test_24_v3_native_nutrient_enable_run_stop_and_states(self):
         self.nutrient_fixture()
         p=self.page
