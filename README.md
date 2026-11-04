@@ -2,7 +2,7 @@
 
 ## 目前開發狀態與完整目標
 
-**已發布的是 P2 補水基線；目前 P3a 加養候選已通過本地獨立規格與品質審查，仍待精確 Git 來源／CI 發布關卡，不能直接部署。**
+**P3a 加養工程來源已推送，獨立規格／品質與功能來源的遠端 CI 均通過；未建立正式發行或部署實機。** 詳見 [P3A_PUBLICATION.md](docs/P3A_PUBLICATION.md)。
 
 - 本機已接通原生 Options、整組參數／星期 CAS、schema3 Card，以及必要循環→加養脈衝→中點停泵→混合→新樣本穩定確認。設定保存不致動；原生 Switch 與外部 `start_flow` 共用後端。
 - 隔離原生回歸、實際 Card 的設定與加養跨層已執行；都是假硬體，不是原 HA／HACS／實機驗收。精確來源與剩餘關卡記錄在後端工作樹 `docs/P3A_LOCAL_CHECKPOINT.json` 與 `docs/P3A_REVIEW_CANDIDATE.md`（尚未發布，不假設遠端已有這些檔案）。
@@ -127,7 +127,7 @@ schema1不顯示控制操作；schema2另提供總/補水/整輪Switch與急停/
 
 ## 分期狀態
 
-- 已發布 P2：補水原生操作與 schema2 已實作並審查；本機 P3a 另支援 schema3 加養及群組設定，並已通過本地兩審；精確來源／CI 尚待完成。酸／獨立混合 capability 仍未支援，實機尚未驗收。
+- 已發布 P2：補水原生操作與 schema2 已實作並審查；本機 P3a 另支援 schema3 加養及群組設定，並已完成兩審與功能來源 CI。酸／獨立混合 capability 仍未支援，實機尚未驗收。
 - P3：四階段可配置順序/重疊/相對延遲與條件、每階段七日複選；最小可排序階段列＋開始條件＋並行組＋預覽、加藥/混合/資源仲裁、成組原子參數與版本衝突處理。
 - P4：配方、外部action/結果互通與通知、完成/品質/灌溉許可介面。何時啟動整輪由外部排程/HA automation決定；不建排程器、不匯入排程、不管理外部腳本/旁支。星期只判允許，不自動產生工作；混合/脈衝/安全期限仍屬後端。
 - P5：進階視覺化編輯器、手機/鍵盤體驗、診斷/歷史與完整多槽產品；不是把核心可配置流程延到P5。
@@ -135,7 +135,7 @@ schema1不顯示控制操作；schema2另提供總/補水/整輪Switch與急停/
 
 研究依據見 [流程編排/UI、星期與外部啟動研究](docs/FLOW_DESIGN_RESEARCH.md)。已確認取消獨立stage_link，以編排決定接續；R03採各階段實際開始前查星期，新增原生整輪運行Switch。完整 R02 圖語意列後續工程設計；R04 已凍結，可編流程尚未交付。
 
-完整分階段路線圖見 [docs/DEVELOPMENT_PLAN.md](docs/DEVELOPMENT_PLAN.md)；[總/子開關與流程組合](docs/CONTROL_SWITCHES.md) 及 [原系統功能差異盤點](docs/FUNCTIONAL_PARITY_REVIEW.md) 依分期實作；P2 已發布；P3a 本機候選已接通且本地兩審通過，精確來源／CI待完成，完整 P3 及 P4–P5 仍待完成；schema1監測介面不因此產生控制操作。配套後端為 [uninus-nutriculture](https://github.com/ivanlee1007/uninus-nutriculture)。遠端 CI 結果以 Actions 的對應 commit 為準。
+完整分階段路線圖見 [docs/DEVELOPMENT_PLAN.md](docs/DEVELOPMENT_PLAN.md)；[總/子開關與流程組合](docs/CONTROL_SWITCHES.md) 及 [原系統功能差異盤點](docs/FUNCTIONAL_PARITY_REVIEW.md) 依分期實作；P2 已發布；P3a 工程來源已交付並通過兩審／功能來源 CI，完整 P3 及 P4–P5 仍待完成；schema1監測介面不因此產生控制操作。配套後端為 [uninus-nutriculture](https://github.com/ivanlee1007/uninus-nutriculture)。遠端 CI 結果以 Actions 的對應 commit 為準。
 
 ## 共同開發規範
 
