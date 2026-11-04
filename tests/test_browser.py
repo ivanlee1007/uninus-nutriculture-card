@@ -66,6 +66,170 @@ class BrowserTests(unittest.TestCase):
           card.hass=h;
         }""")
 
+    def nutrient_fixture(self):
+        self.page.evaluate("""states=>{window.p3states=states; card.hass={states,callService:(...args)=>{calls.push(args);return Promise.resolve()}};}""",json.loads((ROOT/'tests/fixtures/p3a.json').read_text()))
+
+    def test_24_v3_native_nutrient_enable_run_stop_and_states(self):
+        self.nutrient_fixture()
+        p=self.page
+        row=p.locator('[data-control="nutrient_enabled"]')
+        self.assertEqual(row.count(),1)
+        row.locator('button').click()
+        self.assertEqual(p.evaluate('calls.at(-1)'),['switch','turn_off',{'entity_id':'switch.actual_nutrient_enabled'}])
+        p.locator('[data-control="flow_run"] button').click()
+        self.assertEqual(p.evaluate('calls.at(-1)'),['switch','turn_on',{'entity_id':'switch.actual_flow_run'}])
+        for state in ['waiting_resource','dosing','mixing','waiting_sample','stabilizing']:
+            p.evaluate("s=>{const a=card.hass.states['sensor.status'];a.state=a.attributes.flow_state=s;card.hass.states['switch.actual_flow_run'].state='on';card.hass=card.hass}",state)
+            self.assertIn(state,p.locator('[data-control-status]').inner_text())
+        p.locator('[data-control="flow_run"] button').click()
+        self.assertEqual(p.evaluate('calls.at(-1)'),['switch','turn_off',{'entity_id':'switch.actual_flow_run'}])
+        p.locator('[data-control="emergency_stop"] button').click()
+        self.assertEqual(p.evaluate('calls.at(-1)'),['button','press',{'entity_id':'button.actual_emergency_stop'}])
+
+    def test_25_v3_group_apply_cancel_readback_and_reopen(self):
+        self.nutrient_fixture()
+        p=self.page
+        p.locator('summary').first.click()
+        self.assertEqual(p.locator('[data-param] button:visible').count(),0)
+        p.locator('[data-param="ec_low"] input').fill('0.82')
+        p.locator('[data-param="ec_high"] input').fill('0.92')
+        p.locator('[data-dose-details] summary').click()
+        p.locator('[data-dose="pulse_seconds"] input').fill('6')
+        self.assertIn('0.87',p.locator('[data-midpoint]').inner_text())
+        self.assertEqual(p.evaluate('calls'),[])
+        p.locator('[data-group-cancel]').click()
+        self.assertEqual(p.evaluate('calls'),[])
+        self.assertEqual(p.locator('[data-param="ec_low"] input').input_value(),'0.8')
+        p.locator('[data-param="ec_low"] input').fill('0.82')
+        p.locator('[data-dose="pulse_seconds"] input').fill('6')
+        p.locator('[data-group-apply]').click()
+        call=p.evaluate('calls.at(-1)')
+        self.assertEqual(call[:2],['uninus_nutriculture','apply_control_settings'])
+        self.assertEqual(set(call[2]),{'config_entry_id','expected_revision','parameters','dosing_parameters','allowed_weekdays'})
+        self.assertEqual(call[2]['expected_revision'],4)
+        self.assertEqual(call[2]['config_entry_id'],'entry-a')
+        self.assertEqual(len(call[2]['parameters']),10)
+        self.assertEqual(len(call[2]['dosing_parameters']),13)
+        self.assertEqual(call[2]['dosing_parameters']['pulse_seconds'],6)
+        self.assertNotIn('已套用',p.locator('[data-group-message]').inner_text())
+        self.assertIn('讀回',p.locator('[data-group-message]').inner_text())
+        p.evaluate("() => {const a=card.hass.states['sensor.status'].attributes,d=calls.at(-1)[2];a.parameters=d.parameters;a.dosing_parameters=d.dosing_parameters;a.allowed_weekdays=d.allowed_weekdays;a.settings_revision=5;for(const [k,v] of Object.entries(d.parameters))card.hass.states[a.parameter_entities[k]].state=String(v);card.hass=card.hass}")
+        self.assertIn('已套用',p.locator('[data-group-message]').inner_text())
+        p.locator('summary').first.click();p.locator('summary').first.click()
+        self.assertEqual(p.locator('[data-param="ec_low"] input').input_value(),'0.82')
+
+    def test_26_v3_conflict_preserves_complete_draft_and_cancel_reloads(self):
+        self.nutrient_fixture()
+        p=self.page
+        p.locator('summary').first.click()
+        p.locator('[data-param="ec_low"] input').fill('0.82')
+        p.evaluate("() => {const a=card.hass.states['sensor.status'].attributes;a.settings_revision=5;a.parameters.ec_low=.81;card.hass=card.hass}")
+        self.assertEqual(p.locator('[data-param="ec_low"] input').input_value(),'0.82')
+        self.assertIn('settings_conflict',p.locator('[data-group-message]').inner_text())
+        self.assertTrue(p.locator('[data-group-apply]').is_disabled())
+        p.locator('[data-group-cancel]').click()
+        self.assertEqual(p.locator('[data-param="ec_low"] input').input_value(),'0.81')
+        self.assertEqual(p.evaluate('calls'),[])
+        p.locator('[data-param="ec_low"] input').fill('0.82')
+        p.evaluate("() => {card.hass.callService=(...args)=>{calls.push(args);return Promise.reject(new Error('settings_conflict'))}}")
+        p.locator('[data-group-apply]').click()
+        self.assertIn('settings_conflict',p.locator('[data-group-message]').inner_text())
+        self.assertEqual(p.locator('[data-param="ec_low"] input').input_value(),'0.82')
+        self.assertEqual(len(p.evaluate('calls')),1)
+
+    def test_27_v3_pending_slot_mapping_and_remount_late_promises(self):
+        self.nutrient_fixture()
+        p=self.page
+        p.locator('summary').first.click()
+        p.locator('[data-param="ec_low"] input').fill('0.82')
+        p.evaluate("() => {card.hass.callService=(...args)=>{calls.push(args);return new Promise((resolve,reject)=>{window.finish=resolve;window.fail=reject})}}")
+        p.locator('[data-group-apply]').click()
+        p.evaluate("card.setConfig({entity:'sensor.status'});card.remove();document.body.append(card)")
+        p.locator('[data-param="ec_low"] input').fill('0.83')
+        p.evaluate('card.groupApply.click()')
+        self.assertEqual(len(p.evaluate('calls')),1)
+        p.evaluate("() => {const states=structuredClone(p3states);states['sensor.other']=states['sensor.status'];delete states['sensor.status'];states['sensor.other'].attributes.settings_target.config_entry_id='entry-b';states['sensor.other'].attributes.settings_revision=40;card.setConfig({entity:'sensor.other'});card.hass={states,callService:(...args)=>{calls.push(args);return Promise.resolve()}};card.details.open=true}")
+        p.locator('[data-param="ec_low"] input').fill('0.84')
+        p.evaluate("fail(new Error('old-entry-error'))")
+        self.assertEqual(p.locator('[data-param="ec_low"] input').input_value(),'0.84')
+        self.assertNotIn('old-entry-error',p.locator('[data-group-message]').inner_text())
+        p.locator('[data-group-apply]').click()
+        self.assertEqual(p.evaluate('calls.at(-1)[2].config_entry_id'),'entry-b')
+        self.assertEqual(p.evaluate('calls.at(-1)[2].expected_revision'),40)
+        self.assertEqual(p.evaluate('calls[0][2].config_entry_id'),'entry-a')
+        self.assertEqual(p.evaluate('calls[0][2].expected_revision'),4)
+        p.locator('[data-group-cancel]').click()
+        p.locator('[data-param="ec_low"] input').fill('0.85')
+        p.evaluate("() => {const a=card.hass.states['sensor.other'].attributes;card.hass.states['number.new_ec']={state:'.81',attributes:{min:0,max:14,step:.01}};a.parameter_entities.ec_low='number.new_ec';card.groupApply.click()}")
+        self.assertEqual(len(p.evaluate('calls')),2)
+        self.assertNotEqual(p.locator('[data-param="ec_low"] input').input_value(),'0.85')
+        p.evaluate('card.remove();card.groupApply.click();document.body.append(card)')
+        self.assertEqual(len(p.evaluate('calls')),2)
+
+    def test_28_v3_container_geometry_themes_and_live_typing(self):
+        self.nutrient_fixture()
+        p=self.page
+        p.locator('summary').first.click()
+        p.locator('[data-dose-details] summary').click()
+        p.locator('[data-week-details] summary').click()
+        field=p.locator('[data-param="ec_low"] input')
+        field.fill('0.82');field.press('Home');field.press('ArrowRight')
+        p.evaluate("window.original=card.rows.get('ec_low').input;card.hass=card.hass")
+        field.press('1')
+        self.assertEqual(field.input_value(),'01.82')
+        self.assertTrue(p.evaluate("original===card.rows.get('ec_low').input && card.shadowRoot.activeElement===original"))
+        output=Path(os.environ['BROWSER_EVIDENCE_DIR']);output.mkdir(parents=True,exist_ok=True)
+        rows=[]
+        p.set_viewport_size({'width':1280,'height':1000})
+        for theme in ['light','dark']:
+            p.evaluate("t=>{document.body.style.setProperty('--primary-text-color',t==='dark'?'#eee':'#213b48');document.body.style.setProperty('--card-background-color',t==='dark'?'#161b22':'#fff');document.body.style.setProperty('--secondary-background-color',t==='dark'?'#262d36':'#edf5f6')}",theme)
+            for width in [320,768,1200]:
+                p.evaluate("w=>{card.style.width=w+'px';card.hass=card.hass}",width)
+                g=p.evaluate("""() => {const box=card.getBoundingClientRect(),nodes=[card,card.root,...card.shadowRoot.querySelectorAll('button,input,fieldset,.param,.control')].filter(n=>n.getClientRects().length);return {width:box.width,overflow:Math.max(...nodes.map(n=>n.scrollWidth-n.clientWidth)),outside:nodes.filter(n=>{const r=n.getBoundingClientRect();return r.left<box.left-.5||r.right>box.right+.5}).length}}""")
+                self.assertEqual(g['width'],width);self.assertLessEqual(g['overflow'],1);self.assertEqual(g['outside'],0)
+                rows.append({'theme':theme,**g});p.screenshot(path=str(output/f'v3-{theme}-{width}.png'),full_page=True)
+        (output/'v3-geometry.json').write_text(json.dumps(rows,indent=2))
+        self.assertEqual(p.evaluate('calls'),[])
+
+    def test_29_v3_invalid_latest_contract_and_busy_rejection_fail_closed(self):
+        self.nutrient_fixture()
+        p=self.page
+        mutations=["a.schema_version=2","a.flow_state='future'","s.state='fault'","a.capabilities.acid=true","a.settings_target.domain='evil'","a.dosing_parameters.extra=1","a.dosing_parameters.pulse_seconds=true","a.allowed_weekdays.nutrient=['mon','mon']","a.control_entities.nutrient_enabled=a.control_entities.flow_run","delete card.hass.states['number.actual_ph_low'].attributes.step"]
+        for mutation in mutations:
+            self.nutrient_fixture()
+            p.evaluate("() => {calls.length=0;const nutrientButton=card.controlRows.get('nutrient_enabled').button;const s=card.hass.states['sensor.status'],a=s.attributes;"+mutation+";card.hass=card.hass;card.groupApply.click();nutrientButton.click()}")
+            # Bad Number metadata blocks settings, not otherwise valid native switches.
+            self.assertEqual(len(p.evaluate('calls')),1 if mutation.startswith('delete card.hass.states') else 0)
+        self.nutrient_fixture()
+        p.evaluate("() => {calls.length=0;card.hass.callService=(...args)=>{calls.push(args);return Promise.reject(new Error('busy'))}}")
+        p.locator('[data-control="flow_run"] button').click()
+        self.assertIn('busy',p.locator('[data-control="flow_run"]').inner_text())
+        p.evaluate("card.hass.states['switch.actual_flow_run'].state='unknown';card.hass=card.hass")
+        self.assertTrue(p.locator('[data-control="flow_run"] button').is_disabled())
+
+    def test_30_v3_offline_group_demo_is_memory_only(self):
+        p = self.page
+        requests = []
+        p.on('request', lambda r: requests.append(r.url))
+        p.goto((ROOT/'demo'/'index.html').as_uri())
+        p.locator('#scenario').select_option('settings')
+        self.assertEqual(p.evaluate("card.hass.states['sensor.demo_status'].attributes.schema_version"),3)
+        p.evaluate('card.details.open=true')
+        low = p.locator('[data-param="ec_low"] input')
+        low.fill('0.85')
+        p.locator('[data-group-cancel]').click()
+        self.assertEqual(p.locator('#log').inner_text(),'尚無呼叫')
+        self.assertEqual(low.input_value(),'0.8')
+        low.fill('0.85')
+        p.locator('[data-group-apply]').click()
+        p.wait_for_function("card.groupMessage.textContent.includes('已套用')")
+        result = json.loads(p.locator('#log').inner_text())
+        self.assertTrue(result['simulation'])
+        self.assertEqual(result['service'],'apply_control_settings')
+        self.assertEqual(result['data']['parameters']['ec_low'],0.85)
+        self.assertFalse(p.evaluate("card.hass.states['sensor.demo_status'].attributes.capabilities.nutrient"))
+        self.assertEqual([url for url in requests if not url.startswith('file:')],[])
+
     def test_17_v2_displays_real_states_and_keeps_ten_number_editors(self):
         self.control_fixture()
         p=self.page
@@ -217,6 +381,7 @@ class BrowserTests(unittest.TestCase):
                 self.assertEqual(g['card_width'],width-16)
                 self.assertLessEqual(g['maxOverflow'],1)
                 self.assertEqual(g['outside'],0)
+                self.assertEqual(p.evaluate('[...card.controlRows.keys()].sort()'),['automation_enabled','emergency_stop','flow_run','refill_enabled','reset_fault'])
                 self.assertTrue(all(b['width']>=44 and b['height']>=36 for b in g['buttons']))
                 results.append({'theme':theme,**g})
                 p.screenshot(path=str(output/f'v2-{theme}-{width}.png'),full_page=True)

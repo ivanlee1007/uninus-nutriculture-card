@@ -60,6 +60,20 @@ test('native Button unknown is usable but unavailable and wrong domain are not',
   assert.equal(C.prototype.controlTarget.call(o,r).service,'press');
   o._hass.states['button.native_stop'].state='unavailable';assert.ok(C.prototype.controlTarget.call(o,r).error);
 });
+test('schema3 supports nutrient-only native run and rejects inconsistent contracts',()=>{
+  const states=structuredClone(require('./fixtures/p3a.json'));
+  const o={status:()=>states['sensor.status'],_hass:{states}}, r={key:'flow_run',domain:'switch'};
+  assert.equal(C.prototype.controlTarget.call(o,r).id,'switch.actual_flow_run');
+  assert.equal(C.prototype.controlTarget.call(o,{key:'nutrient_enabled',domain:'switch'}).id,'switch.actual_nutrient_enabled');
+  for(const state of ['waiting_resource','dosing','mixing','waiting_sample','stabilizing']){
+    o.status().state=o.status().attributes.flow_state=state;
+    assert.equal(C.prototype.controlTarget.call(o,r).id,'switch.actual_flow_run');
+  }
+  for(const mutate of [a=>a.schema_version=2,a=>a.flow_state='future',a=>a.capabilities.acid=true,a=>a.settings_target.service='evil',a=>a.dosing_parameters.pulse_seconds=true,a=>a.control_entities.nutrient_enabled='switch.actual_flow_run']){
+    const fresh=structuredClone(require('./fixtures/p3a.json'));const x={status:()=>fresh['sensor.status'],_hass:{states:fresh}};mutate(x.status().attributes);
+    assert.ok(C.prototype.controlTarget.call(x,r).error);
+  }
+});
 test('registration is idempotent with a second resource evaluation',()=>{
   vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../uninus-nutriculture-card.js'),'utf8'),context);
   assert.equal(elements.size,2);assert.equal(context.window.customCards.length,1);

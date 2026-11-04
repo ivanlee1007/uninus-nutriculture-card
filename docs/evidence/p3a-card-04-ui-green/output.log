@@ -1,0 +1,8 @@
+BROWSER_VERSION=156.0.8078.4
+test_24_v3_native_nutrient_enable_run_stop_and_states (__main__.BrowserTests.test_24_v3_native_nutrient_enable_run_stop_and_states) ... ok
+test_25_v3_group_apply_cancel_readback_and_reopen (__main__.BrowserTests.test_25_v3_group_apply_cancel_readback_and_reopen) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 2.365s
+
+OK

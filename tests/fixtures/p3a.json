@@ -1,0 +1,211 @@
+{
+  "sensor.status": {
+    "state": "idle",
+    "attributes": {
+      "schema_version": 3,
+      "mode": "control",
+      "ready_for_irrigation": false,
+      "flow_state": "idle",
+      "parameters": {
+        "level_low": 2.25,
+        "level_high": 2.4,
+        "ph_low": 5.4,
+        "ph_high": 5.8,
+        "ec_low": 0.8,
+        "ec_high": 0.9,
+        "refill_timeout": 190,
+        "ec_timeout": 90,
+        "ph_timeout": 190,
+        "mix_duration": 10
+      },
+      "parameter_entities": {
+        "level_low": "number.actual_level_low",
+        "level_high": "number.actual_level_high",
+        "ph_low": "number.actual_ph_low",
+        "ph_high": "number.actual_ph_high",
+        "ec_low": "number.actual_ec_low",
+        "ec_high": "number.actual_ec_high",
+        "refill_timeout": "number.actual_refill_timeout",
+        "ec_timeout": "number.actual_ec_timeout",
+        "ph_timeout": "number.actual_ph_timeout",
+        "mix_duration": "number.actual_mix_duration"
+      },
+      "source_entities": {},
+      "reasons": [],
+      "fault": null,
+      "run_id": null,
+      "capabilities": {
+        "refill": true,
+        "nutrient": true,
+        "acid": false,
+        "mix": false
+      },
+      "settings_target": {
+        "config_entry_id": "entry-a",
+        "service": "apply_control_settings"
+      },
+      "settings_revision": 4,
+      "dosing_parameters": {
+        "safe_min_level_m": 0.5,
+        "pulse_seconds": 5,
+        "max_total_on_seconds": 60,
+        "max_pulses": 10,
+        "post_mix_seconds": 300,
+        "sample_wait_timeout_seconds": 600,
+        "stable_samples": 8,
+        "stable_interval_seconds": 300,
+        "flow_timeout_seconds": 5400,
+        "ph_danger_low": 3.8,
+        "ec_danger_high": 1.3,
+        "ph_high_alarm": 6.8,
+        "ph_high_alarm_seconds": 600
+      },
+      "allowed_weekdays": {
+        "refill": [
+          "mon",
+          "tue"
+        ],
+        "nutrient": [
+          "mon",
+          "tue"
+        ],
+        "acid": [
+          "mon",
+          "tue"
+        ],
+        "mix": [
+          "mon",
+          "tue"
+        ]
+      },
+      "control_entities": {
+        "automation_enabled": "switch.actual_automation_enabled",
+        "refill_enabled": "switch.actual_refill_enabled",
+        "nutrient_enabled": "switch.actual_nutrient_enabled",
+        "flow_run": "switch.actual_flow_run",
+        "emergency_stop": "button.actual_emergency_stop",
+        "reset_fault": "button.actual_reset_fault"
+      },
+      "stage_states": {
+        "refill": "idle",
+        "nutrient": "idle",
+        "acid": "unsupported",
+        "mix": "unsupported"
+      },
+      "nutrient_phase": null,
+      "dose_progress": {
+        "pulse_count": 0,
+        "reserved_on_seconds": 0,
+        "stable_count": 0
+      },
+      "output_states": {
+        "nutrient": "off",
+        "circulation": "off"
+      }
+    }
+  },
+  "number.actual_level_low": {
+    "state": "2.25",
+    "attributes": {
+      "min": 0,
+      "max": 14,
+      "step": 0.01
+    }
+  },
+  "number.actual_level_high": {
+    "state": "2.4",
+    "attributes": {
+      "min": 0,
+      "max": 14,
+      "step": 0.01
+    }
+  },
+  "number.actual_ph_low": {
+    "state": "5.4",
+    "attributes": {
+      "min": 0,
+      "max": 14,
+      "step": 0.01
+    }
+  },
+  "number.actual_ph_high": {
+    "state": "5.8",
+    "attributes": {
+      "min": 0,
+      "max": 14,
+      "step": 0.01
+    }
+  },
+  "number.actual_ec_low": {
+    "state": "0.8",
+    "attributes": {
+      "min": 0,
+      "max": 14,
+      "step": 0.01
+    }
+  },
+  "number.actual_ec_high": {
+    "state": "0.9",
+    "attributes": {
+      "min": 0,
+      "max": 14,
+      "step": 0.01
+    }
+  },
+  "number.actual_refill_timeout": {
+    "state": "190",
+    "attributes": {
+      "min": 0,
+      "max": 240,
+      "step": 1
+    }
+  },
+  "number.actual_ec_timeout": {
+    "state": "90",
+    "attributes": {
+      "min": 0,
+      "max": 240,
+      "step": 1
+    }
+  },
+  "number.actual_ph_timeout": {
+    "state": "190",
+    "attributes": {
+      "min": 0,
+      "max": 240,
+      "step": 1
+    }
+  },
+  "number.actual_mix_duration": {
+    "state": "10",
+    "attributes": {
+      "min": 0,
+      "max": 240,
+      "step": 1
+    }
+  },
+  "switch.actual_automation_enabled": {
+    "state": "on",
+    "attributes": {}
+  },
+  "switch.actual_refill_enabled": {
+    "state": "off",
+    "attributes": {}
+  },
+  "switch.actual_nutrient_enabled": {
+    "state": "on",
+    "attributes": {}
+  },
+  "switch.actual_flow_run": {
+    "state": "off",
+    "attributes": {}
+  },
+  "button.actual_emergency_stop": {
+    "state": "unknown",
+    "attributes": {}
+  },
+  "button.actual_reset_fault": {
+    "state": "unknown",
+    "attributes": {}
+  }
+}
