@@ -62,8 +62,35 @@
     exact(a.stage_states,STAGES)&&STAGES.every(k=>STAGE_VALUES.includes(a.stage_states[k]))&&phase(a.nutrient_phase)&&phase(a.acid_phase)&&progress(a.dose_progress)&&progress(a.acid_progress)&&
     exact(a.output_states,['nutrient','acid','circulation'])&&Object.values(a.output_states).every(v=>['on','off','unknown'].includes(v))&&Array.isArray(a.reasons)&&a.reasons.every(v=>typeof v==='string')&&['fault','run_id'].every(k=>a[k]===null||(typeof a[k]==='string'&&a[k].trim()!==''));
 
-  const isControl = status => status?.attributes?.mode === 'control' && (status.attributes.schema_version === 2 ? !['nutrient','acid','mix'].some(k=>status.attributes.capabilities?.[k]===true) && !status.attributes.control_entities?.nutrient_enabled : (status.attributes.schema_version === 3 && validV3(status.attributes)) || (status.attributes.schema_version === 4 && validV4(status.attributes)));
-  const writable = status => (isShadow(status) && ['within_range','out_of_range','invalid'].includes(status.state)) || (isControl(status) && (status.attributes.schema_version>=3?V3_STATES:FLOW_STATES).includes(status.state) && status.attributes.flow_state === status.state);
+  const RULES=['flow_start','after_previous_started','after_previous_finished'];
+  const PHASE5=[null,'starting','starting_circulation','refilling','pulsing','confirming_off','mixing','waiting_sample','stabilizing','waiting_delay','waiting_condition','waiting_resource','stopping'];
+  const RESULTS5=[null,'completed','aborted','fault','skipped_disabled','skipped_weekday','blocked_dependency'];
+  const REASONS5=[null,'delay_pending','condition_not_met','level_unsafe','resource_chemical','resource_circulation','source_unavailable','source_stale','dependency_not_started','output_confirmation_pending'];
+  const STATES5=[...V3_STATES,'running','waiting_delay','waiting_condition'];
+  const revision=v=>Number.isSafeInteger(v)&&v>=0;
+  const sameValue=(a,b)=>Array.isArray(a)?Array.isArray(b)&&a.length===b.length&&a.every((v,i)=>sameValue(v,b[i])):a!==null&&typeof a==='object'?b!==null&&typeof b==='object'&&Object.keys(a).length===Object.keys(b).length&&Object.keys(a).every(k=>Object.hasOwn(b,k)&&sameValue(a[k],b[k])):a===b;
+  const weekdays=w=>exact(w,STAGES)&&STAGES.every(k=>Array.isArray(w[k])&&new Set(w[k]).size===w[k].length&&w[k].every(d=>DAYS.includes(d)));
+  const validPlan=p=>exact(p,['rows','run_timeout_seconds'])&&inRange(p.run_timeout_seconds,1,86400,1)&&Array.isArray(p.rows)&&p.rows.length===4&&new Set(p.rows.map(r=>r?.stage)).size===4&&p.rows.every((r,i)=>exact(r,['stage','start_rule','delay_seconds','condition','wait_timeout_seconds'])&&STAGES.includes(r.stage)&&RULES.includes(r.start_rule)&&(i!==0||r.start_rule==='flow_start')&&inRange(r.delay_seconds,0,86400,1)&&inRange(r.wait_timeout_seconds,1,86400,1)&&(r.condition===null||(exact(r.condition,['source','operator','value'])&&['level','ph','ec'].includes(r.condition.source)&&['gte','lte'].includes(r.condition.operator)&&number(r.condition.value)&&r.condition.value>=0&&r.condition.value<=({level:10,ph:14,ec:20}[r.condition.source]))));
+  const instant=v=>v===null||(typeof v==='string'&&/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,6})?(?:Z|\+00:00)$/.test(v)&&Number.isFinite(Date.parse(v)));
+  const validV5=a=>{
+    const extra=['flow_plan','flow_plan_revision','flow_plan_target','run_plan','step_runtime'];
+    if(![...V4_KEYS,...extra].every(k=>Object.hasOwn(a,k))||!Object.keys(a).every(k=>[...V4_KEYS,...extra,...HA_METADATA].includes(k)))return false;
+    if(!exact(a.output_states,['nutrient','acid','circulation','refill'])||!Object.values(a.output_states).every(v=>['on','off','unknown'].includes(v))||!STATES5.includes(a.flow_state))return false;
+    if(!exact(a.flow_plan_target,['config_entry_id','service','preview_service'])||a.flow_plan_target.service!=='apply_flow_plan_v5'||a.flow_plan_target.preview_service!=='preview_flow_plan_v5'||a.settings_target?.service!=='apply_control_settings_v5'||a.flow_plan_target.config_entry_id!==a.settings_target.config_entry_id)return false;
+    if(!validPlan(a.flow_plan)||!revision(a.flow_plan_revision)||!exact(a.step_runtime,STAGES))return false;
+    for(const k of STAGES){const r=a.step_runtime[k];if(!exact(r,['phase','result','started_at','settled_at','waiting_reason'])||!PHASE5.includes(r.phase)||!RESULTS5.includes(r.result)||!REASONS5.includes(r.waiting_reason)||!instant(r.started_at)||!instant(r.settled_at)||((r.phase?.startsWith('waiting_')??false)!==(r.waiting_reason!==null))||(['skipped_disabled','skipped_weekday','blocked_dependency'].includes(r.result)&&r.started_at!==null))return false;}
+    const run=a.run_plan;
+    if(run!==null&&(!exact(run,['run_id','settings_revision','flow_plan_revision','flow_plan','allowed_weekdays','enabled_stages'])||typeof run.run_id!=='string'||!run.run_id.trim()||!revision(run.settings_revision)||!revision(run.flow_plan_revision)||!validPlan(run.flow_plan)||!weekdays(run.allowed_weekdays)||!exact(run.enabled_stages,STAGES)||!STAGES.every(k=>typeof run.enabled_stages[k]==='boolean')))return false;
+    // Reuse strict v4 groups/mapping checks through an explicit projection, never downgrade the source.
+    const base=Object.fromEntries(V4_KEYS.map(k=>[k,a[k]]));base.schema_version=4;base.settings_target={...a.settings_target,service:'apply_control_settings_v4'};base.flow_state=V3_STATES.includes(a.flow_state)?a.flow_state:'idle';base.output_states=Object.fromEntries(['nutrient','acid','circulation'].map(k=>[k,a.output_states[k]]));
+    if(!STAGES.every(k=>[...STAGE_VALUES,'waiting_delay','waiting_condition'].includes(a.stage_states[k])))return false;
+    base.stage_states=Object.fromEntries(STAGES.map(k=>[k,['waiting_delay','waiting_condition'].includes(a.stage_states[k])?'waiting_resource':a.stage_states[k]]));
+    if(!PHASE5.includes(a.nutrient_phase)||!PHASE5.includes(a.acid_phase))return false;
+    base.nutrient_phase=phase(a.nutrient_phase)?a.nutrient_phase:null;base.acid_phase=phase(a.acid_phase)?a.acid_phase:null;
+    return validV4(base);
+  };
+  const isControl = status => status?.attributes?.mode === 'control' && (status.attributes.schema_version === 2 ? !['nutrient','acid','mix'].some(k=>status.attributes.capabilities?.[k]===true) && !status.attributes.control_entities?.nutrient_enabled : (status.attributes.schema_version === 3 && validV3(status.attributes)) || (status.attributes.schema_version === 4 && validV4(status.attributes)) || (status.attributes.schema_version === 5 && validV5(status.attributes)));
+  const writable = status => (isShadow(status) && ['within_range','out_of_range','invalid'].includes(status.state)) || (isControl(status) && (status.attributes.schema_version===5?STATES5:status.attributes.schema_version>=3?V3_STATES:FLOW_STATES).includes(status.state) && status.attributes.flow_state === status.state);
   const style = `
     :host{display:block;min-width:0;color:var(--primary-text-color,#213b48);font-family:var(--paper-font-body1_-_font-family,system-ui,sans-serif)}
     *{box-sizing:border-box}ha-card{display:block;border:1px solid var(--divider-color,#d9e4e7);border-radius:var(--ha-card-border-radius,16px);background:var(--ha-card-background,var(--card-background-color,#fff));padding:18px;overflow-wrap:anywhere}
@@ -166,7 +193,7 @@
     connectedCallback() { this.update(); }
     disconnectedCallback() { this.invalidate(); }
     invalidate() {
-      this.epoch = (this.epoch ?? 0) + 1;
+      this.epoch = (this.epoch ?? 0) + 1;this.planOperation=null;this.previewOperation=null;this.planEpoch=(this.planEpoch??0)+1;
       this.groupOperation=null;
       for (const row of this.rows.values()) { row.operation = null; row.pending = false; }
       for (const row of this.controlRows.values()) { row.operation = null; row.error = ''; }
@@ -267,18 +294,18 @@
       }
     }
     groupValues() {
-      if(this.status()?.attributes?.schema_version===4){
+      if([4,5].includes(this.status()?.attributes?.schema_version)){
         const a=this.status().attributes, read=map=>Object.fromEntries([...map].map(([k,r])=>[k,r.input.value===''?null:Number(r.input.value)]));
         const all=read(this.doseRows),safety=Object.fromEntries(S.map(([k])=>[k,all[k]]));
-        return {parameters:read(this.rows),dosing_parameters:a.capabilities.nutrient?{...all,...safety}:null,acid_parameters:a.capabilities.acid?read(this.acidRows):null,mix_parameters:a.capabilities.mix?read(this.mixRows):null,safety_parameters:safety,allowed_weekdays:Object.fromEntries([...this.weekRows].map(([k,inputs])=>[k,[...inputs].filter(([,input])=>input.checked).map(([d])=>d)]))};
+        return {parameters:read(this.rows),dosing_parameters:a.capabilities.nutrient?{...all,...safety}:null,acid_parameters:a.capabilities.acid?read(this.acidRows):null,mix_parameters:a.capabilities.mix?read(this.mixRows):null,safety_parameters:safety,...(a.schema_version===5?{}:{allowed_weekdays:Object.fromEntries([...this.weekRows].map(([k,inputs])=>[k,[...inputs].filter(([,input])=>input.checked).map(([d])=>d)]))})};
       }
       return {parameters:Object.fromEntries([...this.rows].map(([k,r])=>[k,r.input.value===''?null:Number(r.input.value)])),
         dosing_parameters:Object.fromEntries([...this.doseRows].map(([k,r])=>[k,r.input.value===''?null:Number(r.input.value)])),
         allowed_weekdays:Object.fromEntries([...this.weekRows].map(([k,inputs])=>[k,[...inputs].filter(([,input])=>input.checked).map(([d])=>d)]))};
     }
     groupValid(values) {
-      if(this.status()?.attributes?.schema_version===4){
-        if(!validV4Groups(values)||![...this.rows.values()].every(r=>this.valid(r,this.target(r))))return false;
+      if([4,5].includes(this.status()?.attributes?.schema_version)){
+        if(!validV4Groups({...values,allowed_weekdays:values.allowed_weekdays??this.status().attributes.allowed_weekdays})||![...this.rows.values()].every(r=>this.valid(r,this.target(r))))return false;
         const p=values.parameters,s=values.safety_parameters;
         return p.level_low<p.level_high&&p.ph_low<p.ph_high&&p.ec_low<p.ec_high&&s.ph_danger_low<p.ph_low&&s.ec_danger_high>p.ec_high&&[values.dosing_parameters,values.acid_parameters].every(d=>d===null||d.pulse_seconds<=d.max_total_on_seconds);
       }
@@ -299,15 +326,17 @@
       if(op && op.settled && op.identity===identity && writable(status) && a.settings_revision>=op.revision && this.sameGroups(a,op.values)){
         this.groupOperation=null;this.groupDraft=null;this.groupMessageText=`已套用 · 後端 revision ${a.settings_revision} 讀回一致（非 fsync 保證）`;for(const r of this.rows.values())r.dirty=false;this.updateRows();
       }
+      this.weekDetails.hidden=a?.schema_version===5;
+      if(a?.schema_version===5)text(this.parameterHelp,'數值設定獨立套用；星期僅在流程編輯器與排序原子保存。Enable 決定納入，flow_run 啟動整輪。');
       const pending=!!this.groupOperation, usable=writable(status);
       if(!this.groupDraft){
         for(const [k,r] of this.rows){const v=a?.parameters?.[k];if(r.input.value!==String(v ?? ''))r.input.value=String(v ?? '');r.dirty=false;}
-        for(const [k,r] of this.doseRows){const v=String((a?.schema_version===4&&S.some(r=>r[0]===k)?a?.safety_parameters?.[k]:a?.dosing_parameters?.[k]) ?? '');if(r.input.value!==v)r.input.value=v;}
+        for(const [k,r] of this.doseRows){const v=String(([4,5].includes(a?.schema_version)&&S.some(r=>r[0]===k)?a?.safety_parameters?.[k]:a?.dosing_parameters?.[k]) ?? '');if(r.input.value!==v)r.input.value=v;}
         for(const [stage,inputs] of this.weekRows)for(const [day,input] of inputs)input.checked=a?.allowed_weekdays?.[stage]?.includes(day)??false;
       }
-      for(const [k,r] of this.doseRows){r.input.disabled=!usable||pending||(a?.schema_version===4&&Q.some(v=>v[0]===k)&&!a.capabilities.nutrient);r.input.parentNode.hidden=a?.schema_version===4&&Q.some(v=>v[0]===k)&&!a.capabilities.nutrient;}
+      for(const [k,r] of this.doseRows){r.input.disabled=!usable||pending||([4,5].includes(a?.schema_version)&&Q.some(v=>v[0]===k)&&!a.capabilities.nutrient);r.input.parentNode.hidden=[4,5].includes(a?.schema_version)&&Q.some(v=>v[0]===k)&&!a.capabilities.nutrient;}
       for(const [name,map] of [['acid',this.acidRows],['mix',this.mixRows]])for(const [k,r] of map){
-        r.el.hidden=a?.schema_version!==4||!a.capabilities?.[name];r.input.disabled=!usable||pending||r.el.hidden;
+        r.el.hidden=![4,5].includes(a?.schema_version)||!a.capabilities?.[name];r.input.disabled=!usable||pending||r.el.hidden;
         if(!this.groupDraft){const v=String(a?.[name+'_parameters']?.[k]??'');if(r.input.value!==v)r.input.value=v;}
       }
       for(const inputs of this.weekRows.values())for(const input of inputs.values())input.disabled=!usable || pending;
@@ -319,7 +348,7 @@
       text(this.groupMessage,(!usable?'狀態缺失或不相容；禁止儲存':this.groupMessageText) || (conflict?`settings_conflict：保留草稿；最新 revision ${a.settings_revision}，原 revision ${this.groupDraft.revision}。Cancel 重新載入最新值：${JSON.stringify({parameters:a.parameters,dosing_parameters:a.dosing_parameters,allowed_weekdays:a.allowed_weekdays})}`:this.groupDraft&&!valid?'請檢查完整群組的型別、範圍、間距與上下限':'尚未套用；後端設定為準'));
     }
     sameGroups(a,b) {
-      if(a.schema_version===4)return ['parameters','dosing_parameters','acid_parameters','mix_parameters','safety_parameters'].every(k=>b[k]===null?a[k]===null:a[k]!==null&&Object.keys(b[k]).every(key=>a[k]?.[key]===b[k][key]))&&STAGES.every(k=>JSON.stringify(a.allowed_weekdays[k])===JSON.stringify(b.allowed_weekdays[k]));
+      if([4,5].includes(a.schema_version))return ['parameters','dosing_parameters','acid_parameters','mix_parameters','safety_parameters'].every(k=>b[k]===null?a[k]===null:a[k]!==null&&Object.keys(b[k]).every(key=>a[k]?.[key]===b[k][key]))&&(a.schema_version===5||STAGES.every(k=>JSON.stringify(a.allowed_weekdays[k])===JSON.stringify(b.allowed_weekdays[k])));
       return ['parameters','dosing_parameters'].every(group=>Object.keys(b[group]).every(k=>a[group]?.[k]===b[group][k])) && STAGES.every(k=>JSON.stringify([...(a.allowed_weekdays?.[k]??[])].sort())===JSON.stringify([...b.allowed_weekdays[k]].sort()));
     }
     async applyGroup() {
@@ -337,12 +366,92 @@
       } catch(error){if(current()){this.groupOperation=null;this.groupMessageText=`套用失敗（保留草稿）：${error?.message??String(error)}`;}}
       finally {if(this.flights.get(key)===op)this.flights.delete(key);if(current() || this.isConnected)this.update();}
     }
+    planIdentity() {const a=this.status()?.attributes;return JSON.stringify([this.config?.entity,a?.flow_plan_target]);}
+    beginPlan() {
+      const a=this.status()?.attributes;
+      if(!writable(this.status())||a.schema_version!==5)return null;
+      if(!this.planDraft)this.planDraft={identity:this.planIdentity(),entry:a.flow_plan_target.config_entry_id,revision:a.settings_revision,planRevision:a.flow_plan_revision,flow_plan:structuredClone(a.flow_plan),allowed_weekdays:structuredClone(a.allowed_weekdays)};
+      return this.planDraft;
+    }
+    editPlan(change) {const d=this.beginPlan();if(!d||this.planOperation)return;change(d);this.planEpoch=(this.planEpoch??0)+1;this.previewOperation=null;this.previewResults=null;this.planNotice='';this.updatePlan();}
+    createPlanPanel() {
+      this.planPanel=make('section');this.planPanel.dataset.flowEditor='';this.planPanel.append(make('h3','四階段流程 · 下輪生效'),make('p','Enable 使用原生子開關；允許重疊不保證同時啟動，實際資源與安全由後端仲裁。跨午夜由真正 admission 當日決定，不保證完成時間。'));
+      this.planRows=new Map();this.planBody=make('div');this.planBody.setAttribute('role','table');this.planPanel.append(this.planBody);
+      const field=(parent,label,node)=>{const el=make('label',label);el.append(node);parent.append(el);return node;};
+      for(const stage of STAGES){
+        const el=make('fieldset');el.dataset.flowRow=stage;el.setAttribute('role','row');el.append(make('legend',stage));
+        const row={el};
+        for(const [dir,delta] of [['up',-1],['down',1]]){const b=make('button',dir==='up'?'↑ 上移':'↓ 下移');b.type='button';b.dataset.move=dir;b.addEventListener('click',()=>this.editPlan(d=>{const i=d.flow_plan.rows.findIndex(r=>r.stage===stage),j=i+delta;if(j>=0&&j<4)[d.flow_plan.rows[i],d.flow_plan.rows[j]]=[d.flow_plan.rows[j],d.flow_plan.rows[i]];}));el.append(b);row[dir]=b;}
+        const select=(label,key,options)=>{const s=make('select');s.dataset.flowField=key;for(const v of options){const o=make('option',v||'無條件');o.value=v;s.append(o);}field(el,label,s);return s;};
+        row.rule=select('起始規則 ','start_rule',RULES);
+        const num=(label,key,min)=>{const n=make('input');n.type='number';n.min=String(min);n.max='86400';n.step='1';n.dataset.flowField=key;field(el,label,n);return n;};
+        row.delay=num('延遲秒 ','delay_seconds',0);row.wait=num('等待期限秒 ','wait_timeout_seconds',1);
+        row.source=select('條件來源 ','source',['','level','ph','ec']);row.operator=select('比較 ','operator',['gte','lte']);row.value=num('條件有限值 ','value',0);row.value.step='any';row.value.max='20';
+        for(const [key,node] of [['start_rule',row.rule],['delay_seconds',row.delay],['wait_timeout_seconds',row.wait],['condition',row.source],['condition',row.operator],['condition',row.value]])node.addEventListener(node.tagName==='SELECT'?'change':'input',()=>this.editPlan(d=>{const r=d.flow_plan.rows.find(r=>r.stage===stage);if(key==='condition')r.condition=row.source.value?{source:row.source.value,operator:row.operator.value,value:row.value.value===''?null:Number(row.value.value)}:null;else r[key]=key==='start_rule'?node.value:node.value===''?null:Number(node.value);}));
+        row.days=new Map();for(const day of DAYS){const n=make('input');n.type='checkbox';n.dataset.flowDay=day;field(el,day,n);n.addEventListener('change',()=>this.editPlan(d=>{d.allowed_weekdays[stage]=DAYS.filter(k=>row.days.get(k).checked);}));row.days.set(day,n);}
+        row.runtime=make('p');row.runtime.dataset.stepRuntime=stage;el.append(row.runtime);this.planRows.set(stage,row);
+      }
+      this.runTimeout=make('input');this.runTimeout.type='number';this.runTimeout.min='1';this.runTimeout.max='86400';this.runTimeout.step='1';this.runTimeout.dataset.runTimeout='';field(this.planPanel,'整輪期限秒 ',this.runTimeout);this.runTimeout.addEventListener('input',()=>this.editPlan(d=>{d.flow_plan.run_timeout_seconds=this.runTimeout.value===''?null:Number(this.runTimeout.value);}));
+      for(const [key,label,fn] of [['Apply','Apply · 原子保存',()=>this.applyPlan()],['Cancel','Cancel · 捨棄草稿',()=>{this.planEpoch=(this.planEpoch??0)+1;this.planDraft=null;this.planOperation=null;this.previewOperation=null;this.previewResults=null;this.planNotice='已取消草稿';this.updatePlan();}],['Preview','Preview · 七日後端預覽',()=>this.previewPlan()]]){const b=make('button',label);b.type='button';b.dataset['plan'+key]='';b.addEventListener('click',fn);this['plan'+key]=b;this.planPanel.append(b);}
+      this.planMessage=make('p');this.planMessage.dataset.planMessage='';this.planMessage.setAttribute('role','status');this.previewView=make('div');this.previewView.dataset.previewResults='';this.planPanel.append(this.planMessage,this.previewView);
+    }
+    updatePlan() {
+      if(!this.planPanel)this.createPlanPanel();
+      const a=this.status()?.attributes,usable=a?.schema_version===5&&writable(this.status());
+      if(!usable){this.planPanel.remove();this.planOperation=null;this.previewOperation=null;this.planEpoch=(this.planEpoch??0)+1;return;}
+      const identity=this.planIdentity();if(this.planDraft&&this.planDraft.identity!==identity){this.planDraft=null;this.planOperation=null;this.previewOperation=null;this.previewResults=null;this.planNotice='目標已改變；舊草稿清除';this.planEpoch=(this.planEpoch??0)+1;}
+      if(this.planPanel.parentNode!==this.root)this.root.append(this.planPanel);
+      const op=this.planOperation;
+      if(op?.settled&&op.epoch===this.epoch&&op.identity===identity&&op.draft===this.planDraft&&a.settings_revision===op.response.settings_revision&&a.flow_plan_revision===op.response.flow_plan_revision&&sameValue(a.flow_plan,op.payload.flow_plan)&&sameValue(a.allowed_weekdays,op.payload.allowed_weekdays)){this.planDraft=null;this.planOperation=null;this.planNotice='已套用；同 entry / revision / 全值後端讀回一致';}
+      const d=this.planDraft??a,p=d.flow_plan,w=d.allowed_weekdays,pending=!!this.planOperation,conflict=!!this.planDraft&&(a.settings_revision!==d.revision||a.flow_plan_revision!==d.planRevision);
+      for(const [i,r] of p.rows.entries()){
+        const row=this.planRows.get(r.stage);if(this.planBody.children[i]!==row.el)this.planBody.insertBefore(row.el,this.planBody.children[i]??null);
+        const values=[[row.rule,r.start_rule],[row.delay,r.delay_seconds],[row.wait,r.wait_timeout_seconds],[row.source,r.condition?.source??''],[row.operator,r.condition?.operator??'gte'],[row.value,r.condition?.value??'']];
+        for(const [n,v] of values){if(n.value!==String(v??''))n.value=String(v??'');n.disabled=pending;}
+        for(const [day,n] of row.days){n.checked=w[r.stage].includes(day);n.disabled=pending;}
+        row.up.disabled=pending||i===0;row.down.disabled=pending||i===3;
+        const runtime=a.step_runtime[r.stage];text(row.runtime,`own phase: ${runtime.phase??'—'} · result: ${runtime.result??'—'} · wait: ${runtime.waiting_reason??'—'} · started: ${runtime.started_at??'—'} · settled: ${runtime.settled_at??'—'}`);
+      }
+      if(this.runTimeout.value!==String(p.run_timeout_seconds??''))this.runTimeout.value=String(p.run_timeout_seconds??'');this.runTimeout.disabled=pending;
+      const valid=validPlan(p)&&weekdays(w),locked=this.flights.has('plan:'+a.flow_plan_target.config_entry_id);
+      this.planApply.disabled=!this.isConnected||!this.planDraft||!valid||conflict||pending||locked;
+      this.planPreview.disabled=!this.isConnected||!valid||conflict||pending||!!this.previewOperation;
+      text(this.planMessage,!valid?'流程無效：首列必須 flow_start，重排不會暗改規則；請檢查整秒期限與條件量程':conflict?'settings_conflict：保留草稿與原兩 revision；Cancel 才載入新版':this.planNotice??'尚未保存；預覽會送出未保存星期與計畫');
+      if(this.previewRendered!==this.previewResults){this.previewRendered=this.previewResults;this.previewView.replaceChildren();for(const result of this.previewResults??[]){const day=make('section');day.dataset.previewDay=result.weekday;day.append(make('h4',result.weekday));for(const r of result.rows)day.append(make('p',`${r.stage} · ${r.eligibility} · 最早下界 ${r.earliest_offset_seconds===null?'未知':r.earliest_offset_seconds+'s'} · ${r.uncertainties.join(' / ')}`));day.append(make('p',result.warnings.join(' / ')));this.previewView.append(day);}}
+      text(this.unsupported,`物理輸出（非 Enable）：${Object.entries(a.output_states).map(([k,v])=>k+' '+v).join(' / ')}\nIRR ready: false · 等待期間整輪保持 ON；unknown / fault 不代表完成。`);
+    }
+    planPayload(d) {return {config_entry_id:d.entry,expected_revision:d.revision,expected_flow_plan_revision:d.planRevision,flow_plan:structuredClone(d.flow_plan),allowed_weekdays:structuredClone(d.allowed_weekdays)};}
+    async flowRequest(service,payload) {
+      if(!this._hass?.callWS)throw new Error('需要支援 service response 的 HA transport');
+      const result=await this._hass.callWS({type:'call_service',domain:'uninus_nutriculture',service,service_data:payload,return_response:true});
+      return result?.response;
+    }
+    async applyPlan() {
+      this.updatePlan();if(this.planApply.disabled)return;
+      const d=this.planDraft,a=this.status().attributes,key='plan:'+d.entry,op={epoch:this.epoch,identity:this.planIdentity(),draft:d,payload:this.planPayload(d)};
+      this.flights.set(key,op);this.planOperation=op;this.planNotice='保存中；等待服務及嚴格讀回';this.updatePlan();
+      const current=()=>this.isConnected&&this.epoch===op.epoch&&this.planOperation===op&&this.planDraft===d&&this.planIdentity()===op.identity&&writable(this.status());
+      try{const r=await this.flowRequest(a.flow_plan_target.service,op.payload);if(!current())return;
+        if(!exact(r,['applied','settings_revision','flow_plan_revision','flow_plan','allowed_weekdays'])||typeof r.applied!=='boolean'||!revision(r.settings_revision)||!revision(r.flow_plan_revision)||r.settings_revision<d.revision||r.flow_plan_revision<d.planRevision||!validPlan(r.flow_plan)||!weekdays(r.allowed_weekdays)||!sameValue(r.flow_plan,d.flow_plan)||!sameValue(r.allowed_weekdays,d.allowed_weekdays))throw new Error('invalid_plan_response');op.response=r;op.settled=true;this.planNotice='已送出；等待同 revision 全值讀回';
+      }catch(e){if(current()){this.planOperation=null;this.planNotice='保存失敗／衝突：保留草稿';}}
+      finally{if(this.flights.get(key)===op)this.flights.delete(key);if(current()||this.isConnected)this.updatePlan();}
+    }
+    async previewPlan() {
+      this.updatePlan();if(this.planPreview.disabled)return;
+      const d=this.beginPlan(),a=this.status().attributes,op={epoch:this.epoch,draft:d,draftEpoch:this.planEpoch,identity:this.planIdentity()};this.previewOperation=op;this.updatePlan();
+      const current=()=>this.isConnected&&this.epoch===op.epoch&&this.planEpoch===op.draftEpoch&&this.previewOperation===op&&this.planDraft===d&&this.planIdentity()===op.identity&&writable(this.status())&&this.status().attributes.settings_revision===d.revision&&this.status().attributes.flow_plan_revision===d.planRevision;
+      try{const payload=this.planPayload(d),results=await Promise.all(DAYS.map(async weekday=>{const r=await this.flowRequest(a.flow_plan_target.preview_service,{...payload,weekday});
+        if(!exact(r,['settings_revision','flow_plan_revision','weekday','rows','warnings'])||r.settings_revision!==d.revision||r.flow_plan_revision!==d.planRevision||r.weekday!==weekday||!Array.isArray(r.rows)||r.rows.length!==4||!Array.isArray(r.warnings)||!r.warnings.every(v=>typeof v==='string'&&v.length<=256)||!r.rows.every((row,i)=>exact(row,['stage','eligibility','earliest_offset_seconds','uncertainties'])&&row.stage===payload.flow_plan.rows[i].stage&&['eligible','skipped_disabled','skipped_weekday','blocked_dependency','blocked_safety'].includes(row.eligibility)&&(row.earliest_offset_seconds===null||(number(row.earliest_offset_seconds)&&row.earliest_offset_seconds>=0))&&Array.isArray(row.uncertainties)&&row.uncertainties.every(v=>typeof v==='string'&&v.length<=256)))throw new Error('invalid_preview_response');return r;}));
+        if(current()){this.previewResults=results;this.planNotice='七日後端預覽；僅最早下界，真正 admission 安全與跨日以後端為準';}
+      }catch(e){if(current())this.planNotice='預覽失敗／衝突；保留草稿';}
+      finally{if(current()){this.previewOperation=null;this.updatePlan();}}
+    }
     controlTarget(row) {
       const status = this.status();
       if (!isControl(status) || !writable(status)) return {error:'控制狀態缺失或不相容；禁止操作'};
       const a=status.attributes;
       if (row.key==='nutrient_enabled' && (a.schema_version<3 || !a.capabilities.nutrient)) return {error:'加養尚未支援；禁止操作'};
-      if(['acid_enabled','mix_enabled'].includes(row.key)&& (a.schema_version!==4||!a.capabilities[row.key.replace('_enabled','')]))return {error:'階段尚未支援；禁止操作'};
+      if(['acid_enabled','mix_enabled'].includes(row.key)&& (![4,5].includes(a.schema_version)||!a.capabilities[row.key.replace('_enabled','')]))return {error:'階段尚未支援；禁止操作'};
       if (row.key==='refill_enabled' && a.capabilities?.refill!==true) return {error:'補水尚未支援；禁止操作'};
       if (row.key==='flow_run') {
         if (a.schema_version===2 && a.capabilities?.refill!==true) return {error:'補水尚未支援；禁止操作'};
@@ -350,7 +459,7 @@
           const run=this._hass?.states?.[a.control_entities.flow_run];
           if (run?.state!=='on') {
             const selected=STAGES.filter(k=>this._hass?.states?.[a.control_entities[`${k}_enabled`]]?.state==='on');
-            if (selected.length!==1 || !a.capabilities[selected[0]]) return {error:'組合尚未支援或未選擇合法階段；禁止操作'};
+            if (a.schema_version===5 ? (!selected.length||selected.some(k=>!a.capabilities[k])) : (selected.length!==1 || !a.capabilities[selected[0]])) return {error:'組合尚未支援或未選擇合法階段；禁止操作'};
           }
         }
       }
@@ -364,14 +473,14 @@
       this.p3bRows=this.p3bRows||new Map();
       for(const key of ['acid_enabled','mix_enabled']){
         if(this.controlRows.has(key))this.p3bRows.set(key,this.controlRows.get(key));
-        if(this.status()?.attributes?.schema_version===4){if(this.p3bRows.has(key))this.controlRows.set(key,this.p3bRows.get(key));}
+        if([4,5].includes(this.status()?.attributes?.schema_version)){if(this.p3bRows.has(key))this.controlRows.set(key,this.p3bRows.get(key));}
         else if(this.controlRows.has(key)){this.controlRows.get(key).el.remove();this.controlRows.delete(key);}
       }
       const v3=this.status()?.attributes?.schema_version>=3;
       if(v3 && this.nutrientRow)this.controlRows.set('nutrient_enabled',this.nutrientRow);
       if(!v3 && this.controlRows.has('nutrient_enabled')){this.nutrientRow=this.controlRows.get('nutrient_enabled');this.nutrientRow.el.remove();this.controlRows.delete('nutrient_enabled');}
       for (const row of this.controlRows.values()) {
-        row.el.hidden=['acid_enabled','mix_enabled'].includes(row.key)&&this.status()?.attributes?.schema_version!==4;
+        row.el.hidden=['acid_enabled','mix_enabled'].includes(row.key)&&![4,5].includes(this.status()?.attributes?.schema_version);
         if(row.key==='nutrient_enabled' && this.status()?.attributes?.schema_version<3){row.el.remove();continue;}
         if(row.el.parentNode!==this.controls)this.controls.insertBefore(row.el,this.controlRows.get('flow_run').el);
         const target = this.controlTarget(row);
@@ -419,13 +528,13 @@
         text(this.unsupported,a.schema_version===4?`加酸：${a.stage_states.acid} · phase ${a.acid_phase??'無'} · 脈衝 ${a.acid_progress.pulse_count} · ON ${a.acid_progress.reserved_on_seconds}s · 穩定 ${a.acid_progress.stable_count}\n獨立攪拌：${a.stage_states.mix} · 酸輸出 ${a.output_states.acid} / 循環 ${a.output_states.circulation}`:a.schema_version>=3?`加養：${a.capabilities.nutrient?'原生映射已支援':'尚未支援（引擎未接通）'} · 加酸／獨立混合：尚未支援\n養階段：${a.stage_states.nutrient} · phase：${a.nutrient_phase??'無'} · 脈衝 ${a.dose_progress.pulse_count} · ON 預算 ${a.dose_progress.reserved_on_seconds}s · 穩定 ${a.dose_progress.stable_count}\n輸出：養 ${a.output_states.nutrient} / 循環 ${a.output_states.circulation}`:'加養／加酸／獨立混合：尚未支援（P2 不執行）');
       } else this.controls.remove();
       const labels = {within_range:'讀值在範圍內',out_of_range:'讀值超出範圍',invalid:'來源資料無效'};
-      const warning = !compatible ? '狀態缺失或不相容：僅支援 schema 1 / shadow 或 schema 2 / 3 / 4 control；禁止儲存。' : control ? (writable(status) ? '控制狀態以原生 Entity 讀回為準' : '未知或不一致狀態；禁止儲存。') : labels[status.state] ?? '未知狀態；禁止儲存。';
+      const warning = !compatible ? '狀態缺失或不相容：僅支援 schema 1 / shadow 或 schema 2 / 3 / 4 / 5 control；禁止儲存。' : control ? (writable(status) ? '控制狀態以原生 Entity 讀回為準'+(status.attributes.schema_version===4?'；編輯四列流程請先至原生整合 Options 建立 v5 計畫。':'') : '未知或不一致狀態；禁止儲存。') : labels[status.state] ?? '未知狀態；禁止儲存。';
       const reasons = Array.isArray(status?.attributes?.reasons) ? status.attributes.reasons.map(String) : [];
       const blocked = Array.from(this.rows.values()).filter(row=>this.target(row).error).length;
       const parameterWarning = compatible && blocked ? `${blocked} 項參數無法儲存；請展開參數檢查 Number Entity。` : '';
       text(this.quality,[warning,parameterWarning,...reasons].filter(Boolean).join('\n'));
       this.quality.classList.toggle('warn',!compatible || status.state !== 'within_range' || blocked>0);
-      this.updateRows(); this.updateControls();this.updateGroup();
+      this.updateRows(); this.updateControls();this.updateGroup();this.updatePlan();
     }
   }
   class NutricultureEditor extends HTMLElement {

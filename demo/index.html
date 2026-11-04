@@ -89,4 +89,35 @@
     card.hass=hass;
   });
 </script>
+<script>
+// Memory-only wire demonstration, not native preview or backend integration.
+const option5=document.createElement('option');option5.value='settings5';option5.textContent='v5 四列流程／七日預覽（純記憶體示範，非 native）';document.querySelector('#scenario').append(option5);
+const v5stages=['refill','nutrient','acid','mix'],v5days=['mon','tue','wed','thu','fri','sat','sun'];
+hass.callWS=async message=>{
+  const {service,service_data:d}=message,a=states['sensor.demo_status'].attributes;
+  document.querySelector('#log').textContent=JSON.stringify({simulation:true,not_native:true,...message},null,2);
+  if(a.schema_version!==5||d.config_entry_id!==a.flow_plan_target.config_entry_id||d.expected_revision!==a.settings_revision||d.expected_flow_plan_revision!==a.flow_plan_revision)throw new Error('settings_conflict');
+  if(service==='preview_flow_plan_v5')return {response:{settings_revision:a.settings_revision,flow_plan_revision:a.flow_plan_revision,weekday:d.weekday,rows:d.flow_plan.rows.map((r,i)=>({stage:r.stage,eligibility:!a.capabilities[r.stage]?'skipped_disabled':!d.allowed_weekdays[r.stage].includes(d.weekday)?'skipped_weekday':'eligible',earliest_offset_seconds:i===0?r.delay_seconds:null,uncertainties:['simulation_only_not_native','future_sensor_duration_unknown']})),warnings:['simulation_only_not_native','admission_day_only']}};
+  if(service!=='apply_flow_plan_v5')throw new Error('unsupported_simulation');
+  a.flow_plan=structuredClone(d.flow_plan);a.allowed_weekdays=structuredClone(d.allowed_weekdays);a.settings_revision++;a.flow_plan_revision++;card.hass=hass;
+  return {response:{applied:true,settings_revision:a.settings_revision,flow_plan_revision:a.flow_plan_revision,flow_plan:structuredClone(a.flow_plan),allowed_weekdays:structuredClone(a.allowed_weekdays)}};
+};
+document.querySelector('#scenario').addEventListener('change',()=>{
+  if(scenario!=='settings5'){for(const k of ['flow_plan','flow_plan_revision','flow_plan_target','run_plan','step_runtime'])delete states['sensor.demo_status'].attributes[k];card.hass=hass;return;}
+  const {ph_danger_low,ec_danger_high,ph_high_alarm,ph_high_alarm_seconds,...q}=defaultDosing;
+  const a=states['sensor.demo_status'].attributes;
+  Object.assign(a,{schema_version:5,mode:'control',ready_for_irrigation:false,flow_state:'idle',fault:null,run_id:null,
+    settings_target:{config_entry_id:'demo-v5',service:'apply_control_settings_v5'},settings_revision:0,
+    dosing_parameters:null,acid_parameters:q,mix_parameters:{safe_min_level_m:.5,flow_timeout_seconds:5400},safety_parameters:{ph_danger_low,ec_danger_high,ph_high_alarm,ph_high_alarm_seconds},
+    nutrient_phase:null,acid_phase:null,dose_progress:{pulse_count:0,reserved_on_seconds:0,stable_count:0},acid_progress:{pulse_count:0,reserved_on_seconds:0,stable_count:0},
+    capabilities:{refill:true,nutrient:false,acid:true,mix:true},stage_states:{refill:'idle',nutrient:'unsupported',acid:'idle',mix:'idle'},allowed_weekdays:Object.fromEntries(v5stages.map(k=>[k,[...v5days]])),
+    output_states:{nutrient:'unknown',acid:'off',circulation:'off',refill:'off'},
+    flow_plan:{rows:v5stages.map((stage,i)=>({stage,start_rule:i?'after_previous_finished':'flow_start',delay_seconds:0,condition:null,wait_timeout_seconds:300})),run_timeout_seconds:86400},flow_plan_revision:0,
+    flow_plan_target:{config_entry_id:'demo-v5',service:'apply_flow_plan_v5',preview_service:'preview_flow_plan_v5'},run_plan:null,
+    step_runtime:Object.fromEntries(v5stages.map(k=>[k,{phase:null,result:null,started_at:null,settled_at:null,waiting_reason:null}]))});
+  controls.acid_enabled='switch.demo_acid_enabled';controls.mix_enabled='switch.demo_mix_enabled';
+  for(const id of Object.values(controls))states[id]={state:id.startsWith('switch.')?'off':'unknown',attributes:{}};
+  states['sensor.demo_status'].state='idle';card.hass=hass;
+});
+</script>
 </html>

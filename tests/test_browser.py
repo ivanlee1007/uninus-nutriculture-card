@@ -52,6 +52,95 @@ class BrowserTests(unittest.TestCase):
         self.page.close()
         self.assertEqual(self.errors, [])
 
+    def flow_fixture(self):
+        import subprocess
+        states=json.loads(subprocess.check_output(['node','-e',"console.log(JSON.stringify(require('./tests/p3c_fixture.cjs')()))"],cwd=ROOT))
+        self.page.evaluate("states=>{card.hass={states,callService:(...args)=>{calls.push(args);return Promise.resolve()},callWS:m=>{calls.push([m.domain,m.service,m.service_data]);return Promise.resolve({response:{applied:true,settings_revision:m.service_data.expected_revision+1,flow_plan_revision:m.service_data.expected_flow_plan_revision+1,flow_plan:m.service_data.flow_plan,allowed_weekdays:m.service_data.allowed_weekdays}})}}}",states)
+
+    def test_43_v5_visible_editor_atomic_weekdays_order(self):
+        self.flow_fixture()
+        p=self.page
+        self.assertEqual(p.locator('[data-flow-row]').count(),4)
+        p.locator('[data-flow-row="mix"] [data-move="up"]').click()
+        self.assertEqual(p.locator('[data-flow-row]').evaluate_all('(els)=>els.map(e=>e.dataset.flowRow)'),['refill','nutrient','mix','acid'])
+        p.locator('[data-flow-row="mix"] [data-flow-day="sun"]').check()
+        p.locator('[data-plan-apply]').click()
+        call=p.evaluate('calls.at(-1)')
+        self.assertEqual(call[:2],['uninus_nutriculture','apply_flow_plan_v5'])
+        self.assertEqual(set(call[2]),{'config_entry_id','expected_revision','expected_flow_plan_revision','flow_plan','allowed_weekdays'})
+        self.assertEqual(call[2]['allowed_weekdays']['mix'],['sun'])
+        self.assertEqual(call[2]['flow_plan']['rows'][2]['stage'],'mix')
+        self.assertNotIn('已套用',p.locator('[data-plan-message]').inner_text())
+
+    def test_44_v5_preview_draft_seven_days_stale_cancel(self):
+        self.flow_fixture()
+        p=self.page
+        p.evaluate("""()=>{window.previewPending=[];card.hass.callWS=m=>{calls.push(m);return new Promise(resolve=>previewPending.push({m,resolve}))};window.finishPreview=()=>{for(const {m,resolve} of previewPending.splice(0)){const d=m.service_data;resolve({response:{settings_revision:d.expected_revision,flow_plan_revision:d.expected_flow_plan_revision,weekday:d.weekday,rows:d.flow_plan.rows.map(r=>({stage:r.stage,eligibility:r.stage==='mix'?'blocked_safety':'eligible',earliest_offset_seconds:r.stage==='refill'?0:null,uncertainties:['sensor_duration_unknown']})),warnings:['admission_day_only']}})}}}""")
+        p.locator('[data-flow-row="mix"] [data-flow-day="sun"]').check()
+        p.locator('[data-plan-preview]').click()
+        self.assertEqual(p.evaluate('calls.length'),7)
+        self.assertEqual(p.evaluate('calls[0].service_data.allowed_weekdays.mix'),['sun'])
+        self.assertEqual(p.evaluate('Object.keys(calls[0].service_data).length'),6)
+        p.locator('[data-plan-cancel]').click()
+        p.evaluate('finishPreview()')
+        self.assertEqual(p.locator('[data-preview-day]').count(),0)
+        p.locator('[data-plan-preview]').click()
+        p.evaluate('finishPreview()')
+        self.assertEqual(p.locator('[data-preview-day]').count(),7)
+        self.assertIn('blocked_safety',p.locator('[data-preview-results]').inner_text())
+
+    def test_45_v5_invalid_reorder_conflict_and_pending_remount(self):
+        self.flow_fixture()
+        p=self.page
+        p.locator('[data-flow-row="refill"] [data-move="down"]').click()
+        self.assertTrue(p.locator('[data-plan-apply]').is_disabled())
+        self.assertIn('首列',p.locator('[data-plan-message]').inner_text())
+        p.locator('[data-plan-cancel]').click()
+        p.locator('[data-flow-row="acid"] [data-flow-field="delay_seconds"]').fill('2')
+        p.evaluate("()=>{card.hass.callWS=m=>{calls.push(m);return new Promise((resolve,reject)=>{window.planResolve=resolve;window.planReject=reject})}}")
+        p.locator('[data-plan-apply]').click()
+        p.evaluate("()=>{card.applyPlan();card.remove();document.body.append(card);card.applyPlan()}")
+        self.assertEqual(p.evaluate('calls.length'),1)
+        p.locator('[data-plan-cancel]').click()
+        p.locator('[data-flow-row="acid"] [data-flow-field="delay_seconds"]').fill('4')
+        p.evaluate("planReject(new Error('old conflict'))")
+        self.assertEqual(p.locator('[data-flow-row="acid"] [data-flow-field="delay_seconds"]').input_value(),'4')
+        p.evaluate("()=>{card.hass.states['sensor.status'].attributes.settings_revision++;card.hass=card.hass}")
+        self.assertTrue(p.locator('[data-plan-apply]').is_disabled())
+        self.assertIn('settings_conflict',p.locator('[data-plan-message]').inner_text())
+
+    def test_46_v5_settings_namespace_and_authoritative_plan_readback(self):
+        self.flow_fixture()
+        p=self.page
+        p.evaluate('card.details.open=true;card.doseDetails.open=true')
+        p.locator('[data-acid="pulse_seconds"] input').fill('3')
+        p.locator('[data-flow-row="acid"] [data-flow-field="delay_seconds"]').fill('2')
+        p.locator('[data-plan-apply]').click()
+        p.evaluate("()=>{const a=card.hass.states['sensor.status'].attributes,d=calls.at(-1)[2];a.flow_plan=structuredClone(d.flow_plan);a.allowed_weekdays=structuredClone(d.allowed_weekdays);a.settings_revision++;a.flow_plan_revision++;card.hass=card.hass}")
+        self.assertIn('已套用',p.locator('[data-plan-message]').inner_text())
+        self.assertEqual(p.locator('[data-acid="pulse_seconds"] input').input_value(),'3')
+        self.assertTrue(p.locator('[data-group-apply]').is_disabled())
+        p.locator('[data-group-cancel]').click()
+        p.locator('[data-acid="pulse_seconds"] input').fill('3')
+        p.locator('[data-group-apply]').click()
+        self.assertEqual(p.evaluate('Object.keys(calls.at(-1)[2]).length'),7)
+        self.assertNotIn('allowed_weekdays',p.evaluate('calls.at(-1)[2]'))
+
+    def test_47_v5_demo_memory_only(self):
+        p=self.page
+        requests=[]
+        p.on('request',lambda r:requests.append(r.url))
+        p.goto((ROOT/'demo/index.html').as_uri())
+        self.assertEqual(p.locator('#scenario option[value="settings5"]').count(),1)
+        p.locator('#scenario').select_option('settings5')
+        self.assertEqual(p.locator('[data-flow-row]').count(),4)
+        p.locator('[data-plan-preview]').click()
+        self.assertEqual(p.locator('[data-preview-day]').count(),7)
+        self.assertTrue(all(r.startswith('file:') for r in requests))
+        if os.environ.get('BROWSER_EVIDENCE_DIR'):
+            out=Path(os.environ['BROWSER_EVIDENCE_DIR']);out.mkdir(parents=True,exist_ok=True)
+            p.screenshot(path=str(out/'p3c-v5-memory-only.png'),full_page=True)
+
     def control_fixture(self):
         self.page.evaluate("""() => {
           const h=fixture(), a=h.states['sensor.status'].attributes;

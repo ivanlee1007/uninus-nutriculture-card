@@ -97,6 +97,14 @@ test('v4 rejects outer unknown fields, missing fields and normal parameter range
  assert.equal(C.prototype.controlTarget.call(o,{key:'acid_enabled',domain:'switch'}).id,'switch.actual_acid_enabled');
 });
 
+test('schema5 strict wire consumer never grants controls to malformed snapshots',()=>{
+ const base=require('./p3c_fixture.cjs');
+ const check=states=>C.prototype.controlTarget.call({status:()=>states['sensor.status'],_hass:{states}},{key:'acid_enabled',domain:'switch'});
+ assert.equal(check(base()).id,'switch.actual_acid_enabled');
+ for(const mutate of [a=>a.extra=1,a=>delete a.run_plan,a=>a.output_states.extra='off',a=>delete a.output_states.refill,a=>a.output_states.refill=true,a=>a.flow_plan_target.config_entry_id='other',a=>a.flow_plan_target.preview_service='evil',a=>a.settings_target.service='apply_control_settings_v4',a=>a.flow_plan.rows.reverse(),a=>a.flow_plan.rows[1].stage='refill',a=>a.flow_plan.rows[0].delay_seconds=.5,a=>a.flow_plan.rows[1].condition={source:'ph',operator:'gte',value:15},a=>a.step_runtime.mix.phase='done',a=>a.step_runtime.mix.waiting_reason='raw exception',a=>a.ready_for_irrigation=true,a=>a.acid_parameters=null,a=>a.safety_parameters.extra=1,a=>a.control_entities.acid_enabled='switch.BAD',a=>a.schema_version=6]){const s=base();mutate(s['sensor.status'].attributes);assert.ok(check(s).error,String(mutate));}
+ for(const state of ['running','waiting_delay','waiting_condition','waiting_resource']){const s=base();s['sensor.status'].state=s['sensor.status'].attributes.flow_state=state;s['switch.actual_flow_run'].state='on';assert.equal(check(s).id,'switch.actual_acid_enabled');}
+});
+
 test('registration is idempotent with a second resource evaluation',()=>{
   vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../uninus-nutriculture-card.js'),'utf8'),context);
   assert.equal(elements.size,2);assert.equal(context.window.customCards.length,1);

@@ -1,16 +1,18 @@
+> 現行交付狀態：P3a 工程來源與歷史兩審／功能來源 CI 保持不變。本倉 P3b 加酸、獨立攪拌及 P3c 四階段可編順序、合法重疊、相對延遲、有限條件、actual-admission 星期與七日有效流程 Preview 已提供，P3c 凍結來源已完成獨立 SPEC／品質兩審。這是來源與隔離假硬體驗證，不是原 HA、HACS 或物理 cutoff 認證；完整 P3 Issue #3 保持 OPEN。本文件不操作遠端 Issue。Hosted CI 僅以 exact commit 的實際 Actions 為準，不以本機 gate 代替；沒有內建 scheduler、獨立 stage_link 或灌溉許可，未建立正式 tag/release 或部署。
+
 # UNiNUS Nutriculture / 養液控制
 
 ## 目前開發狀態與完整目標
 
-**P3b 加酸／獨立攪拌／S4：來源已接通並完成兩審；完整 P3c 編排尚未完成。**
+**P3b 加酸／獨立攪拌／S4：來源已接通並完成兩審；P3c 編排來源已接通並完成兩審。**
 
-P3a 工程來源已交付，兩審與功能來源 CI 已完成，見 [P3A_PUBLICATION.md](docs/P3A_PUBLICATION.md)。本倉 P3b 加酸、獨立攪拌與 S4/schema4 已接通唯一後端並完成獨立規格及品質兩審；已審來源的 295 項 native 假硬體測試不代表真 HA／HACS／實機驗收。P3c 四階段可編順序／合法重疊／相對延遲與條件／星期及真正有效流程預覽尚未完成，完整 P3 的 Issue #3 保持 OPEN；本文件不更新遠端 Issue。P3b 來源交付不必等待完整 P3。P3b 遠端 CI 只以最終 commit 的實際 Actions 為準，不以本機 gate 代替；沒有內建 scheduler 或獨立 stage_link，未建立 tag/release 或部署。
+P3a 工程來源已交付，兩審與功能來源 CI 已完成，見 [P3A_PUBLICATION.md](docs/P3A_PUBLICATION.md)。本倉 P3b 加酸、獨立攪拌與 S4/schema4 已接通唯一後端並完成獨立規格及品質兩審；已審來源的 295 項 native 假硬體測試不代表真 HA／HACS／實機驗收。P3c 四階段可編順序／合法重疊／相對延遲與條件／星期及七日有效流程預覽已接通並完成兩審，完整 P3 的 Issue #3 保持 OPEN；本文件不更新遠端 Issue。P3b 來源交付不必等待完整 P3。P3b 遠端 CI 只以最終 commit 的實際 Actions 為準，不以本機 gate 代替；沒有內建 scheduler 或獨立 stage_link，未建立 tag/release 或部署。
 
 **P3a 加養工程來源已推送，獨立規格／品質與功能來源的遠端 CI 均通過；未建立正式發行或部署實機。** 詳見 [P3A_PUBLICATION.md](docs/P3A_PUBLICATION.md)。
 
 - 本機已接通原生 Options、整組參數／星期 CAS、schema3 Card，以及必要循環→加養脈衝→中點停泵→混合→新樣本穩定確認。設定保存不致動；原生 Switch 與外部 `start_flow` 共用後端。
 - 隔離原生回歸、實際 Card 的設定與加養跨層已執行；都是假硬體，不是原 HA／HACS／實機驗收。精確來源與剩餘關卡記錄在後端工作樹 `docs/P3A_LOCAL_CHECKPOINT.json` 與 `docs/P3A_REVIEW_CANDIDATE.md`（P3a 來源交付範圍以 P3A_PUBLICATION.md 為準）。
-- **P3b 加酸與獨立攪拌已接通；尚未交付的是 P3c 四階段可編順序／合法重疊／相對延遲與條件／星期及真正預覽。** P3a 只是開發順序，不代表整個 P3，也不能把核心編排延至 P5。
+- **P3b 加酸與獨立攪拌已接通；P3c 四階段可編順序／合法重疊／相對延遲與條件／星期及七日真正預覽亦已提供。** P3a 只是開發順序，不代表整個 P3，也不能把核心編排延至 P5。
 - 配方、通知／外部結果、品質與灌溉許可仍屬 P4；目前 `ready_for_irrigation` 固定 false。沒有內建排程器、獨立 stage_link 或瀏覽器關泵計時器。
 - 已凍結的工程策略不再反覆要求使用者逐項決定；實際設備保護、最低液位與來源採樣能力仍由每槽 commissioning 明確確認。
 
@@ -91,7 +93,7 @@ parameters:
 reasons: []
 ```
 
-本卡只使用狀態中的明確映射，**不猜測 Number ID**。來源讀值來自 `hass.states`；`parameters` 只供無法取得 Number 時的唯讀參考，不能授權儲存。Number 缺失、不在 `number.*`、值無效或 metadata 無效，該列禁止儲存。只接受合法的 schema1/shadow 或 schema2/3/4 control 狀態；schema2 的 `flow_state` 還必須與 Entity state 一致，其他契約或狀態缺失／未知時全列禁止儲存。來源無效但狀態契約仍合法時，可調整健康的 Number 參數；這不是直接設備操作。
+本卡只使用狀態中的明確映射，**不猜測 Number ID**。來源讀值來自 `hass.states`；`parameters` 只供無法取得 Number 時的唯讀參考，不能授權儲存。Number 缺失、不在 `number.*`、值無效或 metadata 無效，該列禁止儲存。只接受合法的 schema1/shadow 或 schema2/3/4/5 control 狀態；schema2 的 `flow_state` 還必須與 Entity state 一致，其他契約或狀態缺失／未知時全列禁止儲存。來源無效但狀態契約仍合法時，可調整健康的 Number 參數；這不是直接設備操作。
 
 | 參數 | 契約預設值 | 單位 |
 | --- | ---: | --- |
@@ -137,12 +139,24 @@ schema1不顯示控制操作；schema2另提供總/補水/整輪Switch與急停/
 - P5：進階視覺化編輯器、手機/鍵盤體驗、診斷/歷史與完整多槽產品；不是把核心可配置流程延到P5。
 - 正式發行、HACS 遠端安裝、真實 HA 與實體設備驗收皆未執行；GitHub 程式推送不代表這些步驟已完成。
 
-研究依據見 [流程編排/UI、星期與外部啟動研究](docs/FLOW_DESIGN_RESEARCH.md)。已確認取消獨立stage_link，以編排決定接續；R03採各階段實際開始前查星期，新增原生整輪運行Switch。完整 R02 圖語意列後續工程設計；R04 已凍結，可編流程尚未交付。
+研究依據見 [流程編排/UI、星期與外部啟動研究](docs/FLOW_DESIGN_RESEARCH.md)。已確認取消獨立stage_link，以編排決定接續；R03採各階段實際開始前查星期，新增原生整輪運行Switch。P3c 有限圖語意已凍結；R04 已凍結，P3c 可編流程已提供。
 
-完整分階段路線圖見 [docs/DEVELOPMENT_PLAN.md](docs/DEVELOPMENT_PLAN.md)；[總/子開關與流程組合](docs/CONTROL_SWITCHES.md) 及 [原系統功能差異盤點](docs/FUNCTIONAL_PARITY_REVIEW.md) 依分期實作；P2 已發布；P3a 工程來源已交付並通過兩審／功能來源 CI，完整 P3 及 P4–P5 仍待完成；schema1監測介面不因此產生控制操作。配套後端為 [uninus-nutriculture](https://github.com/ivanlee1007/uninus-nutriculture)。遠端 CI 結果以 Actions 的對應 commit 為準。
+完整分階段路線圖見 [docs/DEVELOPMENT_PLAN.md](docs/DEVELOPMENT_PLAN.md)；[總/子開關與流程組合](docs/CONTROL_SWITCHES.md) 及 [原系統功能差異盤點](docs/FUNCTIONAL_PARITY_REVIEW.md) 依分期實作；P2 已發布；P3a 工程來源已交付並通過兩審／功能來源 CI，P3c 來源已完成兩審，P4–P5 及實機驗收仍待完成；schema1監測介面不因此產生控制操作。配套後端為 [uninus-nutriculture](https://github.com/ivanlee1007/uninus-nutriculture)。遠端 CI 結果以 Actions 的對應 commit 為準。
 
 ## 共同開發規範
 
 [DEVELOPMENT_SPEC.md](docs/DEVELOPMENT_SPEC.md)統整已確認結論、前後端責任、開關/流程/星期/外部排程邊界與決策／工程待辦狀態；已定案不代表已實作，P1仍為影子監測。
 
 控制目標與前台可調安全參數已補入[CONTROL_PARAMETERS.md](docs/CONTROL_PARAMETERS.md)：平均目標停止投藥、危險門檻預設採原HA且可調；D01已定，不阻擋繼續開發。
+
+## P3c 現行流程與原生操作
+
+- 四列必須各含一次 `refill`、`nutrient`、`acid`、`mix`。可改順序；第一列為 `flow_start`，其餘可選 `flow_start`、`after_previous_started` 或 `after_previous_finished`，延遲相對於該錨點，不是任意腳本或排程時間。合法 overlap 仍受後端輸出資源、最低液位、採樣及安全 gate 約束，不保證同時致動。
+- 必要加藥循環與獨立 mix 不同：停用獨立 mix 不會解除加藥必要循環。共用 circulation 由後端仲裁；不能以 Card 或其他入口繞過 ownership。
+- 有限 condition 僅 `level` / `ph` / `ec` 的 `gte` / `lte` 有限數值，或 `none`；不是 template。液位用 m（0–10）、pH 0–14、EC 用 mS/cm（0–20）。每列等待期限與整輪期限有界。
+- 到「設定 → 裝置與服務 → UNiNUS Nutriculture → 該槽的設定／選項」，勾選 **Open flow plan editor (no settings saved)**（`flow_plan`），開啟 **Flow plan / 流程計畫**。這是原生 selector 表單，不必貼 JSON；進入編輯器不會保存同頁其他設定。
+- 每列有 stage、start rule、delay seconds、wait timeout seconds、condition source/operator/value 及 weekdays；`run_timeout_seconds` 為整輪期限。用 **Save / seven-day Preview / Cancel / move row up or down** 的 `row_0_down` / `row_1_up` 等動作調序；規則隨列保留，調序後第一列仍須 `flow_start`。
+- `action=preview` 讀草稿，列出七日有效流程；`save` 才以版本衝突檢查原子保存，作用於下一輪，不啟動設備；`cancel` 不保存。其他頁面已改設定時須重開並協調，不能覆蓋新版本。Card 同樣提供階段列、上下移動、星期、Preview／套用／取消；參數群與流程草稿為分開 namespace。
+- 每階段真正 admission 前依 **HA 設定時區** 的當地星期重查；跨午夜不沿用整輪開始日。星期是允許 gate，不會自行排程、補跑或啟動。外部 automation／`uninus_nutriculture.start_flow` 與原生整輪 Switch 共用後端；Enable 開關不是 start。
+- Preview 使用相同有限依賴／略過與資源模型，反映停用、星期、條件、等待和依賴，不再只是單一 eligible 清單。未來感測、實際加藥／補水完成時刻及跨日 admission 可能未知；七日預覽不是確切時間表、成功保證或灌溉許可。無致動也不建立運行任務。
+- 永久 native suite 為 335；R4 full 339 包含四項外加 QA probes，不屬正常 repo，不能要求乾淨 CI 收集 339。源碼兩審不取代 publication-equivalence 審核或 exact-commit hosted CI。內嵌版本未升正式發行版本；不為顯示美觀修改 bundle/hash/version metadata。
