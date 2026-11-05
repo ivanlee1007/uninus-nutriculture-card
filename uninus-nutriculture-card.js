@@ -67,6 +67,8 @@
   const RESULTS5=[null,'completed','aborted','fault','skipped_disabled','skipped_weekday','blocked_dependency'];
   const REASONS5=[null,'delay_pending','condition_not_met','level_unsafe','resource_chemical','resource_circulation','source_unavailable','source_stale','dependency_not_started','output_confirmation_pending'];
   const STATES5=[...V3_STATES,'running','waiting_delay','waiting_condition'];
+  // Python len(str) counts Unicode code points, not UTF-16 units or graphemes.
+  const recipeNameLength=v=>Array.from(v).length;
   const revision=v=>Number.isSafeInteger(v)&&v>=0;
   const sameValue=(a,b)=>Array.isArray(a)?Array.isArray(b)&&a.length===b.length&&a.every((v,i)=>sameValue(v,b[i])):a!==null&&typeof a==='object'?b!==null&&typeof b==='object'&&Object.keys(a).length===Object.keys(b).length&&Object.keys(a).every(k=>Object.hasOwn(b,k)&&sameValue(a[k],b[k])):a===b;
   const weekdays=w=>exact(w,STAGES)&&STAGES.every(k=>Array.isArray(w[k])&&new Set(w[k]).size===w[k].length&&w[k].every(d=>DAYS.includes(d)));
@@ -183,6 +185,117 @@
       this.groupMessage=make('p');this.groupMessage.dataset.groupMessage='';this.groupMessage.setAttribute('role','status');
       this.groupPanel.append(this.midpoint,this.doseDetails,this.weekDetails,this.groupApply,this.groupCancel,this.groupMessage);
       this.root.append(this.details); this.updateRows();
+      this.initRecipes();
+    }
+    initRecipes() {
+      this.recipeFlights=new Map();this.recipeInputs=new Map();
+      this.recipePanel=make('details');this.recipePanel.dataset.recipePanel='';
+      this.recipePanel.append(make('summary','參數配方'),make('p','參數配方，不含硬體/流程/安全設定'));
+      this.recipeSelect=make('select');this.recipeSelect.dataset.recipeSelect='';this.recipeSelect.setAttribute('aria-label','選擇配方');
+      // Native maxlength counts UTF-16 and can silently truncate a pasted name; validate code points instead.
+      this.recipeName=make('input');this.recipeName.dataset.recipeName='';
+      const label=make('label','配方名稱');label.append(this.recipeName);
+      this.recipePanel.append(this.recipeSelect,label);
+      for(const [key,caption,,unit] of PARAMETERS){
+        const row=make('label',`${caption} ${unit}`),input=make('input');input.type='number';input.dataset.recipeParameter=key;
+        const [min,max,step]=NORMAL_LIMITS[key];for(const [k,v] of Object.entries({min,max,step}))input.setAttribute(k,String(v));
+        input.addEventListener('input',()=>{this.recipeDirty=true;this.renderRecipes();});
+        row.append(input);this.recipePanel.append(row);this.recipeInputs.set(key,input);
+      }
+      this.recipeName.addEventListener('input',()=>{this.recipeDirty=true;this.renderRecipes();});
+      this.recipeButtons={};
+      for(const [key,caption] of [['refresh','Refresh · 重新整理'],['save','Save · 保存配方'],['apply','Apply · 原子套用'],['cancel','Cancel · 取消草稿'],['delete','Delete · 刪除配方']]){
+        const button=make('button',caption);button.type='button';button.dataset['recipe'+key[0].toUpperCase()+key.slice(1)]='';
+        button.addEventListener('click',()=>{
+          if(key==='cancel'){this.recipeDraft(this.recipeData.recipes.find(r=>r.id===this.recipeSelected));this.recipeConfirm.hidden=true;this.recipeNotice='已取消草稿；未寫入';this.renderRecipes();}
+          else if(key==='delete'){this.recipeConfirm.hidden=false;this.recipeConfirmCancel.focus();}
+          else this.recipeRequest({refresh:'get_recipes_v1',save:'save_recipe_v1',apply:'apply_recipe_v1'}[key]);
+        });
+        this.recipeButtons[key]=button;this.recipePanel.append(button);
+      }
+      this.recipeSelect.addEventListener('change',()=>{this.recipeDraft(this.recipeData.recipes.find(r=>r.id===this.recipeSelect.value));this.recipeConfirm.hidden=true;this.recipeNotice='僅選擇；未保存、未套用';this.renderRecipes();});
+      this.recipeConfirm=make('fieldset');this.recipeConfirm.hidden=true;this.recipeConfirm.append(make('legend','再次確認：永久刪除此配方？'));
+      this.recipeConfirmCancel=make('button','取消刪除');this.recipeConfirmCancel.type='button';this.recipeConfirmCancel.dataset.recipeDeleteCancel='';
+      this.recipeConfirmCancel.addEventListener('click',()=>{this.recipeConfirm.hidden=true;this.recipeButtons.delete.focus();});
+      this.recipeConfirmYes=make('button','確認刪除');this.recipeConfirmYes.type='button';this.recipeConfirmYes.dataset.recipeDeleteConfirm='';this.recipeConfirmYes.addEventListener('click',()=>this.recipeRequest('delete_recipe_v1'));
+      this.recipeConfirm.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();this.recipeConfirmCancel.click();}});
+      this.recipeConfirm.append(this.recipeConfirmCancel,this.recipeConfirmYes);this.recipePanel.append(this.recipeConfirm);
+      this.recipeHistory=make('p');this.recipeHistory.dataset.recipeHistory='';this.recipePanel.append(this.recipeHistory);
+      this.recipeMessage=make('p');this.recipeMessage.dataset.recipeMessage='';this.recipeMessage.setAttribute('role','status');this.recipePanel.append(this.recipeMessage);
+      this.recipePanel.addEventListener('toggle',()=>{if(this.recipePanel.open&&!this.recipeData&&!this.recipeOperation)this.recipeRequest('get_recipes_v1');});
+      this.shadowRoot.append(make('style','[data-recipe-panel] label{display:block;margin:8px 0}[data-recipe-panel] input,[data-recipe-panel] select{display:block;width:100%;min-width:0;max-width:100%}[data-recipe-panel] button{max-width:100%;margin:4px 4px 4px 0}[data-recipe-panel][hidden]{display:none}'));
+      this.root.append(this.recipePanel);
+    }
+    recipeTarget() {
+      const s=this.status(),names=['get_recipes_v1','save_recipe_v1','delete_recipe_v1','apply_recipe_v1'];
+      return this.isConnected&&writable(s)&&s.attributes.schema_version===5&&typeof this._hass?.callWS==='function'&&names.every(k=>Object.hasOwn(this._hass.services?.uninus_nutriculture??{},k))?s.attributes.settings_target.config_entry_id:null;
+    }
+    recipeParameters(p) {
+      return exact(p,PARAMETERS.map(r=>r[0]))&&Object.entries(NORMAL_LIMITS).every(([k,limits])=>inRange(p[k],...limits))&&['level','ph','ec'].every(k=>p[k+'_low']<p[k+'_high']);
+    }
+    recipeDTO(d,entry) {
+      const uuid=v=>typeof v==='string'&&/^[a-f0-9]{32}$/.test(v),name=v=>typeof v==='string'&&recipeNameLength(v)>=1&&recipeNameLength(v)<=80&&v===v.trim()&&!/[\x00-\x1f]/.test(v);
+      return exact(d,['schema_version','config_entry_id','catalog_revision','settings_revision','recipes','last_applied','parameters_match','parameters'])&&d.schema_version===1&&d.config_entry_id===entry&&revision(d.catalog_revision)&&revision(d.settings_revision)&&this.recipeParameters(d.parameters)&&Array.isArray(d.recipes)&&d.recipes.length<=100&&new Set(d.recipes.map(r=>r?.id)).size===d.recipes.length&&d.recipes.every(r=>exact(r,['id','name','parameters'])&&uuid(r.id)&&name(r.name)&&this.recipeParameters(r.parameters))&&(d.last_applied===null||(exact(d.last_applied,['recipe_id','name','parameters'])&&uuid(d.last_applied.recipe_id)&&name(d.last_applied.name)&&this.recipeParameters(d.last_applied.parameters)))&&typeof d.parameters_match==='boolean'&&d.parameters_match===(d.last_applied!==null&&sameValue(d.parameters,d.last_applied.parameters));
+    }
+    updateRecipes() {
+      if(!this.recipePanel)return;
+      const entry=this.recipeTarget(),identity=JSON.stringify([this.config?.entity,entry]);
+      if(identity!==this.recipeIdentity){
+        this.recipeIdentity=identity;this.recipeGeneration=(this.recipeGeneration??0)+1;this.recipeOperation=null;this.recipeData=null;this.recipeSelected=null;this.recipeDirty=false;this.recipeNotice='';this.recipePanel.open=false;
+        this.recipeSelect.replaceChildren();this.recipeName.value='';for(const input of this.recipeInputs.values())input.value='';
+      }
+      if(entry){if(this.recipePanel.parentNode!==this.root)this.root.append(this.recipePanel);}else this.recipePanel.remove();this.recipePanel.hidden=!entry;this.renderRecipes();
+    }
+    recipeDraft(record=null) {
+      this.recipeSelected=record?.id??null;this.recipeName.value=record?.name??'';
+      const p=record?.parameters??this.recipeData.parameters;
+      for(const [k,input] of this.recipeInputs)input.value=String(p[k]);
+      this.recipeDirty=false;this.recipeSelect.value=this.recipeSelected??'';
+    }
+    renderRecipes() {
+      if(!this.recipePanel)return;
+      const busy=!!this.recipeOperation||this.recipeFlights.has(this.recipeTarget());
+      for(const [k,b] of Object.entries(this.recipeButtons))b.disabled=busy||(k!=='refresh'&&!this.recipeData);
+      const p=Object.fromEntries([...this.recipeInputs].map(([k,i])=>[k,i.value===''?null:Number(i.value)]));
+      this.recipeButtons.save.disabled=busy||!this.recipeData||!this.recipeName.value.trim()||recipeNameLength(this.recipeName.value.trim())>80||/[\x00-\x1f]/.test(this.recipeName.value)||!this.recipeParameters(p);
+      for(const input of [this.recipeName,this.recipeSelect,...this.recipeInputs.values()])input.disabled=busy||!this.recipeData;
+      this.recipeButtons.apply.disabled=busy||!this.recipeSelected||this.recipeDirty;
+      this.recipeButtons.delete.disabled=busy||!this.recipeSelected;
+      this.recipeConfirmYes.disabled=busy||!this.recipeSelected;
+      this.recipeConfirmCancel.disabled=busy;
+      const last=this.recipeData?.last_applied;
+      text(this.recipeHistory,last?`上次套用歷史：${last.name} · ${last.recipe_id}；${this.recipeData.parameters_match?'與讀回參數相同':'與現值不同（已偏離上次套用）'}。不是品質／灌溉許可。`:'尚無套用歷史；不代表品質／灌溉許可。');
+      text(this.recipeMessage,this.recipeNotice??'');
+    }
+    async recipeRequest(service) {
+      const entry=this.recipeTarget();if(!entry||this.recipeFlights.has(entry))return;
+      const data=this.recipeData,payload={config_entry_id:entry};
+      if(service!=='get_recipes_v1'){
+        if(!data)return;
+        Object.assign(payload,{expected_catalog_revision:data.catalog_revision,recipe_id:this.recipeSelected??null});
+        if(service==='save_recipe_v1'){
+          if(this.recipeButtons.save.disabled)return;
+          Object.assign(payload,{name:this.recipeName.value.trim(),parameters:Object.fromEntries([...this.recipeInputs].map(([k,i])=>[k,Number(i.value)]))});
+        }else if(service==='apply_recipe_v1'){
+          if(this.recipeButtons.apply.disabled)return;payload.expected_settings_revision=data.settings_revision;
+        }else if(service==='delete_recipe_v1'){
+          if(this.recipeConfirm.hidden||!this.recipeSelected)return;payload.confirm_delete=true;
+        }else return;
+      }
+      const op={entry,generation:this.recipeGeneration,epoch:this.epoch,ws:this._hass.callWS,service,payload,catalogRevision:data?.catalog_revision??0,settingsRevision:Math.max(data?.settings_revision??0,this.status().attributes.settings_revision)};
+      this.recipeFlights.set(entry,op);this.recipeOperation=op;this.recipeNotice='等待後端讀回…';this.renderRecipes();
+      const current=()=>this.isConnected&&this.recipeOperation===op&&this.recipeGeneration===op.generation&&this.epoch===op.epoch&&this.recipeTarget()===entry&&this._hass.callWS===op.ws;
+      try{
+        const result=await op.ws.call(this._hass,{type:'call_service',domain:'uninus_nutriculture',service,service_data:payload,return_response:true});
+        if(!current())return;
+        const dto=result?.response;if(!this.recipeDTO(dto,entry)||dto.catalog_revision<op.catalogRevision||dto.settings_revision<op.settingsRevision)throw {code:'invalid_response'};
+        this.recipeData=structuredClone(dto);
+        this.recipeSelect.replaceChildren();const empty=make('option','新增 · 使用目前參數');empty.value='';this.recipeSelect.append(empty);
+        for(const r of dto.recipes){const option=make('option',`${r.name} · ${r.id}`);option.value=r.id;this.recipeSelect.append(option);}
+        this.recipeDraft(service==='save_recipe_v1'?dto.recipes.find(r=>r.id===payload.recipe_id)||dto.recipes.at(-1):service==='apply_recipe_v1'?dto.recipes.find(r=>r.id===payload.recipe_id):null);this.recipeConfirm.hidden=true;
+        this.recipeNotice=({save_recipe_v1:'配方已保存；未套用參數、未啟動輸出',apply_recipe_v1:'參數已原子套用並讀回；未啟動輸出',delete_recipe_v1:'配方已刪除；保留上次套用歷史'})[service]??'配方已讀回';
+      }catch(error){if(current())this.recipeNotice=error?.code==='recipe_conflict'?'配方版本衝突；草稿保留，請明確重新整理':'無法完成配方操作；草稿保留，請重新整理後再試';}
+      finally{if(this.recipeFlights.get(entry)===op)this.recipeFlights.delete(entry);if(this.recipeOperation===op){if(!current())this.recipeNotice='連線已變更；草稿保留，請明確重新整理';this.recipeOperation=null;this.renderRecipes();}}
     }
     static getConfigElement() { return document.createElement(`${TAG}-editor`); }
     static getStubConfig(hass) {
@@ -193,7 +306,7 @@
     connectedCallback() { this.update(); }
     disconnectedCallback() { this.invalidate(); }
     invalidate() {
-      this.epoch = (this.epoch ?? 0) + 1;this.planOperation=null;this.previewOperation=null;this.planEpoch=(this.planEpoch??0)+1;
+      this.epoch = (this.epoch ?? 0) + 1;this.planOperation=null;this.previewOperation=null;this.planEpoch=(this.planEpoch??0)+1;this.recipeOperation=null;this.recipeGeneration=(this.recipeGeneration??0)+1;if(this.recipeConfirm)this.recipeConfirm.hidden=true;
       this.groupOperation=null;
       for (const row of this.rows.values()) { row.operation = null; row.pending = false; }
       for (const row of this.controlRows.values()) { row.operation = null; row.error = ''; }
@@ -534,7 +647,7 @@
       const parameterWarning = compatible && blocked ? `${blocked} 項參數無法儲存；請展開參數檢查 Number Entity。` : '';
       text(this.quality,[warning,parameterWarning,...reasons].filter(Boolean).join('\n'));
       this.quality.classList.toggle('warn',!compatible || status.state !== 'within_range' || blocked>0);
-      this.updateRows(); this.updateControls();this.updateGroup();this.updatePlan();
+      this.updateRows(); this.updateControls();this.updateGroup();this.updatePlan();this.updateRecipes();
     }
   }
   class NutricultureEditor extends HTMLElement {
