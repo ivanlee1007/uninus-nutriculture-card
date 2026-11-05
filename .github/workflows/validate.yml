@@ -21,6 +21,17 @@ jobs:
       - run: python -m pip install -r requirements-test.txt
       - run: python -m playwright install --with-deps chromium
       - run: npm test
+      - name: Verify all activated canonical Card suites
+        run: |
+          python - <<'PY'
+          import json,pathlib,os
+          files=list(pathlib.Path(os.environ.get('CARD_GATE_ROOT','test-results/gate')).glob('*/result.json'))
+          assert len(files)==1
+          results={r['name']:r for r in json.loads(files[0].read_text())['results']}
+          for name,count in [('unit',14),('browser',38),('p4a-browser',16),('p4b-browser',21)]:
+              row=results[name]
+              assert row['returncode']==0 and row['expected_cases']==row['executed_cases']==count
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -1,0 +1,1219 @@
+[
+  {
+    "request": {
+      "type": "call_service",
+      "domain": "uninus_nutriculture",
+      "service": "get_quality_v1",
+      "service_data": {
+        "config_entry_id": "01M6NRFAN73Q5FCX5818N9STTS"
+      },
+      "return_response": true,
+      "id": 1
+    },
+    "reply": {
+      "id": 1,
+      "type": "result",
+      "success": true,
+      "result": {
+        "context": {
+          "id": "01M6NRFEZ7VZRPSDE647BH6NDH",
+          "parent_id": null,
+          "user_id": "3cc6cc340c944088b18b624463efadeb"
+        },
+        "response": {
+          "schema_version": 1,
+          "config_entry_id": "01M6NRFAN73Q5FCX5818N9STTS",
+          "epoch": "03f4c46f86494fdc9b5f0248087615ed",
+          "observation_revision": 34,
+          "policy_revision": 0,
+          "settings_revision": 2,
+          "flow_plan_revision": 1,
+          "policy": {
+            "enabled": false,
+            "stable_samples": 8,
+            "stable_interval_seconds": 300,
+            "stable_duration_seconds": 2100,
+            "permit_ttl_seconds": 300,
+            "required_stages": [
+              "refill",
+              "nutrient",
+              "acid",
+              "mix"
+            ],
+            "sources": {
+              "ph": {
+                "mode": "reported",
+                "attribute": null,
+                "report_contract_confirmed": false
+              },
+              "ec": {
+                "mode": "reported",
+                "attribute": null,
+                "report_contract_confirmed": false
+              },
+              "level": {
+                "mode": "reported",
+                "attribute": null,
+                "report_contract_confirmed": false
+              }
+            }
+          },
+          "entities": {
+            "quality_status": "sensor.tank_pin_zhi_zhuang_tai",
+            "irrigation_permit": "binary_sensor.tank_yun_xu_guan_gai"
+          },
+          "quality": {
+            "state": "disabled",
+            "stable_count": 0,
+            "stable_since": null,
+            "reasons": [
+              "policy_disabled"
+            ]
+          },
+          "completion": {
+            "state": "none",
+            "run_id": null,
+            "settled_at": null
+          },
+          "permit": {
+            "granted": false,
+            "run_id": null,
+            "expires_at": null,
+            "reasons": [
+              "settings_changed"
+            ]
+          }
+        }
+      }
+    },
+    "options": {
+      "dosing_parameters": {
+        "post_mix_seconds": 1.0,
+        "sample_wait_timeout_seconds": 15.0,
+        "stable_samples": 1.0,
+        "stable_interval_seconds": 1.0,
+        "flow_timeout_seconds": 60.0,
+        "ph_danger_low": 3.8,
+        "ec_danger_high": 1.3,
+        "ph_high_alarm": 6.8,
+        "ph_high_alarm_seconds": 600.0,
+        "safe_min_level_m": 0.5,
+        "pulse_seconds": 2.0,
+        "max_total_on_seconds": 20.0,
+        "max_pulses": 5.0
+      },
+      "safety_parameters": {
+        "ph_danger_low": 3.8,
+        "ec_danger_high": 1.3,
+        "ph_high_alarm": 6.8,
+        "ph_high_alarm_seconds": 600.0
+      },
+      "acid_parameters": {
+        "post_mix_seconds": 1.0,
+        "sample_wait_timeout_seconds": 15.0,
+        "stable_samples": 1.0,
+        "stable_interval_seconds": 1.0,
+        "flow_timeout_seconds": 60.0,
+        "safe_min_level_m": 0.5,
+        "pulse_seconds": 2.0,
+        "max_total_on_seconds": 20.0,
+        "max_pulses": 5.0
+      },
+      "mix_parameters": {
+        "safe_min_level_m": 0.5,
+        "flow_timeout_seconds": 1200.0
+      },
+      "control_contract_version": 5,
+      "control": {
+        "binding": {
+          "registry_id": "b6246d05af779ac3fb70f668a05673fe",
+          "platform": "switch",
+          "unique_id": "refill-output",
+          "config_entry_id": null
+        },
+        "commissioned": true,
+        "feedback_timeout": 1.0,
+        "allowed_weekdays": {
+          "refill": [
+            "mon",
+            "tue",
+            "wed",
+            "thu",
+            "fri",
+            "sat",
+            "sun"
+          ],
+          "nutrient": [
+            "mon",
+            "tue",
+            "wed",
+            "thu",
+            "fri",
+            "sat",
+            "sun"
+          ],
+          "acid": [
+            "mon",
+            "tue",
+            "wed",
+            "thu",
+            "fri",
+            "sat",
+            "sun"
+          ],
+          "mix": [
+            "mon",
+            "tue",
+            "wed",
+            "thu",
+            "fri",
+            "sat",
+            "sun"
+          ]
+        },
+        "nutrient_binding": {
+          "registry_id": "fbfa45012867ab01667a16e8fc7ff6c7",
+          "platform": "switch",
+          "unique_id": "dosing-fixture-nutrient",
+          "config_entry_id": null
+        },
+        "acid_binding": {
+          "registry_id": "00b2d0fa35fe1533a93905ec3245f4a4",
+          "platform": "switch",
+          "unique_id": "p3c-acid",
+          "config_entry_id": null
+        },
+        "circulation_binding": {
+          "registry_id": "753ea41955b9285309bb41a0f243c062",
+          "platform": "switch",
+          "unique_id": "dosing-fixture-circulation",
+          "config_entry_id": null
+        },
+        "nutrient_commissioned": true,
+        "nutrient_protection_confirmed": true,
+        "device_max_on_seconds": 3.0,
+        "alias_notes": "Independent outputs, fixture protection only",
+        "sample_mode": "reported",
+        "report_contract_confirmed": true,
+        "acid_commissioned": true,
+        "acid_device_max_on_seconds": 3.0,
+        "acid_protection_confirmed": true,
+        "acid_alias_notes": "independent acid",
+        "acid_sample_mode": "sequence",
+        "acid_sample_attribute": "sample",
+        "acid_report_contract_confirmed": false,
+        "mix_commissioned": true,
+        "circulation_device_max_on_seconds": 1800.0,
+        "circulation_protection_confirmed": true,
+        "circulation_alias_notes": "independent cutoff",
+        "automation_enabled": true,
+        "refill_enabled": true,
+        "nutrient_enabled": true,
+        "acid_enabled": true,
+        "mix_enabled": true
+      },
+      "ph": "sensor.ph",
+      "ec": "sensor.ec",
+      "level": "sensor.level",
+      "max_age_seconds": 300,
+      "settings_revision": 2,
+      "flow_plan": {
+        "rows": [
+          {
+            "stage": "refill",
+            "start_rule": "flow_start",
+            "delay_seconds": 0,
+            "condition": null,
+            "wait_timeout_seconds": 20
+          },
+          {
+            "stage": "mix",
+            "start_rule": "after_previous_started",
+            "delay_seconds": 1,
+            "condition": null,
+            "wait_timeout_seconds": 20
+          },
+          {
+            "stage": "nutrient",
+            "start_rule": "after_previous_finished",
+            "delay_seconds": 0,
+            "condition": null,
+            "wait_timeout_seconds": 20
+          },
+          {
+            "stage": "acid",
+            "start_rule": "after_previous_finished",
+            "delay_seconds": 0,
+            "condition": null,
+            "wait_timeout_seconds": 20
+          }
+        ],
+        "run_timeout_seconds": 120
+      },
+      "flow_plan_revision": 1
+    },
+    "io": {
+      "refill": [],
+      "dosing": [],
+      "acid_on": false
+    },
+    "commit_count": 5,
+    "numbers": {
+      "level_low": 2.25,
+      "level_high": 2.4,
+      "ph_low": 5.4,
+      "ph_high": 5.8,
+      "ec_low": 0.8,
+      "ec_high": 0.9,
+      "refill_timeout": 190.0,
+      "ec_timeout": 90.0,
+      "ph_timeout": 190.0,
+      "mix_duration": 10.0
+    }
+  },
+  {
+    "request": {
+      "type": "call_service",
+      "domain": "uninus_nutriculture",
+      "service": "save_quality_policy_v1",
+      "service_data": {
+        "config_entry_id": "01M6NRFAN73Q5FCX5818N9STTS",
+        "expected_policy_revision": 0,
+        "expected_settings_revision": 2,
+        "expected_flow_plan_revision": 1,
+        "policy": {
+          "enabled": true,
+          "stable_samples": 2,
+          "stable_interval_seconds": 1,
+          "stable_duration_seconds": 1,
+          "permit_ttl_seconds": 2,
+          "required_stages": [
+            "refill",
+            "nutrient",
+            "acid",
+            "mix"
+          ],
+          "sources": {
+            "ph": {
+              "mode": "reported",
+              "attribute": null,
+              "report_contract_confirmed": true
+            },
+            "ec": {
+              "mode": "reported",
+              "attribute": null,
+              "report_contract_confirmed": true
+            },
+            "level": {
+              "mode": "reported",
+              "attribute": null,
+              "report_contract_confirmed": true
+            }
+          }
+        }
+      },
+      "return_response": true,
+      "id": 2
+    },
+    "reply": {
+      "id": 2,
+      "type": "result",
+      "success": true,
+      "result": {
+        "context": {
+          "id": "01M6NRFFDPQ18SN4YS8Z4EG7W5",
+          "parent_id": null,
+          "user_id": "3cc6cc340c944088b18b624463efadeb"
+        },
+        "response": {
+          "schema_version": 1,
+          "config_entry_id": "01M6NRFAN73Q5FCX5818N9STTS",
+          "epoch": "300bebdf2e38471aaf886109c54d1d7a",
+          "observation_revision": 35,
+          "policy_revision": 1,
+          "settings_revision": 2,
+          "flow_plan_revision": 1,
+          "policy": {
+            "enabled": true,
+            "stable_samples": 2,
+            "stable_interval_seconds": 1,
+            "stable_duration_seconds": 1,
+            "permit_ttl_seconds": 2,
+            "required_stages": [
+              "refill",
+              "nutrient",
+              "acid",
+              "mix"
+            ],
+            "sources": {
+              "ph": {
+                "mode": "reported",
+                "attribute": null,
+                "report_contract_confirmed": true
+              },
+              "ec": {
+                "mode": "reported",
+                "attribute": null,
+                "report_contract_confirmed": true
+              },
+              "level": {
+                "mode": "reported",
+                "attribute": null,
+                "report_contract_confirmed": true
+              }
+            }
+          },
+          "entities": {
+            "quality_status": "sensor.tank_pin_zhi_zhuang_tai",
+            "irrigation_permit": "binary_sensor.tank_yun_xu_guan_gai"
+          },
+          "quality": {
+            "state": "out_of_range",
+            "stable_count": 0,
+            "stable_since": null,
+            "reasons": [
+              "out_of_range"
+            ]
+          },
+          "completion": {
+            "state": "none",
+            "run_id": null,
+            "settled_at": null
+          },
+          "permit": {
+            "granted": false,
+            "run_id": null,
+            "expires_at": null,
+            "reasons": [
+              "policy_changed"
+            ]
+          }
+        }
+      }
+    },
+    "options": {
+      "dosing_parameters": {
+        "post_mix_seconds": 1.0,
+        "sample_wait_timeout_seconds": 15.0,
+        "stable_samples": 1.0,
+        "stable_interval_seconds": 1.0,
+        "flow_timeout_seconds": 60.0,
+        "ph_danger_low": 3.8,
+        "ec_danger_high": 1.3,
+        "ph_high_alarm": 6.8,
+        "ph_high_alarm_seconds": 600.0,
+        "safe_min_level_m": 0.5,
+        "pulse_seconds": 2.0,
+        "max_total_on_seconds": 20.0,
+        "max_pulses": 5.0
+      },
+      "safety_parameters": {
+        "ph_danger_low": 3.8,
+        "ec_danger_high": 1.3,
+        "ph_high_alarm": 6.8,
+        "ph_high_alarm_seconds": 600.0
+      },
+      "acid_parameters": {
+        "post_mix_seconds": 1.0,
+        "sample_wait_timeout_seconds": 15.0,
+        "stable_samples": 1.0,
+        "stable_interval_seconds": 1.0,
+        "flow_timeout_seconds": 60.0,
+        "safe_min_level_m": 0.5,
+        "pulse_seconds": 2.0,
+        "max_total_on_seconds": 20.0,
+        "max_pulses": 5.0
+      },
+      "mix_parameters": {
+        "safe_min_level_m": 0.5,
+        "flow_timeout_seconds": 1200.0
+      },
+      "control_contract_version": 5,
+      "control": {
+        "binding": {
+          "registry_id": "b6246d05af779ac3fb70f668a05673fe",
+          "platform": "switch",
+          "unique_id": "refill-output",
+          "config_entry_id": null
+        },
+        "commissioned": true,
+        "feedback_timeout": 1.0,
+        "allowed_weekdays": {
+          "refill": [
+            "mon",
+            "tue",
+            "wed",
+            "thu",
+            "fri",
+            "sat",
+            "sun"
+          ],
+          "nutrient": [
+            "mon",
+            "tue",
+            "wed",
+            "thu",
+            "fri",
+            "sat",
+            "sun"
+          ],
+          "acid": [
+            "mon",
+            "tue",
+            "wed",
+            "thu",
+            "fri",
+            "sat",
+            "sun"
+          ],
+          "mix": [
+            "mon",
+            "tue",
+            "wed",
+            "thu",
+            "fri",
+            "sat",
+            "sun"
+          ]
+        },
+        "nutrient_binding": {
+          "registry_id": "fbfa45012867ab01667a16e8fc7ff6c7",
+          "platform": "switch",
+          "unique_id": "dosing-fixture-nutrient",
+          "config_entry_id": null
+        },
+        "acid_binding": {
+          "registry_id": "00b2d0fa35fe1533a93905ec3245f4a4",
+          "platform": "switch",
+          "unique_id": "p3c-acid",
+          "config_entry_id": null
+        },
+        "circulation_binding": {
+          "registry_id": "753ea41955b9285309bb41a0f243c062",
+          "platform": "switch",
+          "unique_id": "dosing-fixture-circulation",
+          "config_entry_id": null
+        },
+        "nutrient_commissioned": true,
+        "nutrient_protection_confirmed": true,
+        "device_max_on_seconds": 3.0,
+        "alias_notes": "Independent outputs, fixture protection only",
+        "sample_mode": "reported",
+        "report_contract_confirmed": true,
+        "acid_commissioned": true,
+        "acid_device_max_on_seconds": 3.0,
+        "acid_protection_confirmed": true,
+        "acid_alias_notes": "independent acid",
+        "acid_sample_mode": "sequence",
+        "acid_sample_attribute": "sample",
+        "acid_report_contract_confirmed": false,
+        "mix_commissioned": true,
+        "circulation_device_max_on_seconds": 1800.0,
+        "circulation_protection_confirmed": true,
+        "circulation_alias_notes": "independent cutoff",
+        "automation_enabled": true,
+        "refill_enabled": true,
+        "nutrient_enabled": true,
+        "acid_enabled": true,
+        "mix_enabled": true
+      },
+      "ph": "sensor.ph",
+      "ec": "sensor.ec",
+      "level": "sensor.level",
+      "max_age_seconds": 300,
+      "settings_revision": 2,
+      "flow_plan": {
+        "rows": [
+          {
+            "stage": "refill",
+            "start_rule": "flow_start",
+            "delay_seconds": 0,
+            "condition": null,
+            "wait_timeout_seconds": 20
+          },
+          {
+            "stage": "mix",
+            "start_rule": "after_previous_started",
+            "delay_seconds": 1,
+            "condition": null,
+            "wait_timeout_seconds": 20
+          },
+          {
+            "stage": "nutrient",
+            "start_rule": "after_previous_finished",
+            "delay_seconds": 0,
+            "condition": null,
+            "wait_timeout_seconds": 20
+          },
+          {
+            "stage": "acid",
+            "start_rule": "after_previous_finished",
+            "delay_seconds": 0,
+            "condition": null,
+            "wait_timeout_seconds": 20
+          }
+        ],
+        "run_timeout_seconds": 120
+      },
+      "flow_plan_revision": 1,
+      "quality_policy": {
+        "schema_version": 1,
+        "revision": 1,
+        "enabled": true,
+        "stable_samples": 2,
+        "stable_interval_seconds": 1,
+        "stable_duration_seconds": 1,
+        "permit_ttl_seconds": 2,
+        "required_stages": [
+          "refill",
+          "nutrient",
+          "acid",
+          "mix"
+        ],
+        "sources": {
+          "ph": {
+            "mode": "reported",
+            "attribute": null,
+            "report_contract_confirmed": true
+          },
+          "ec": {
+            "mode": "reported",
+            "attribute": null,
+            "report_contract_confirmed": true
+          },
+          "level": {
+            "mode": "reported",
+            "attribute": null,
+            "report_contract_confirmed": true
+          }
+        }
+      }
+    },
+    "io": {
+      "refill": [],
+      "dosing": [],
+      "acid_on": false
+    },
+    "commit_count": 6,
+    "numbers": {
+      "level_low": 2.25,
+      "level_high": 2.4,
+      "ph_low": 5.4,
+      "ph_high": 5.8,
+      "ec_low": 0.8,
+      "ec_high": 0.9,
+      "refill_timeout": 190.0,
+      "ec_timeout": 90.0,
+      "ph_timeout": 190.0,
+      "mix_duration": 10.0
+    }
+  },
+  {
+    "request": {
+      "type": "call_service",
+      "domain": "uninus_nutriculture",
+      "service": "get_quality_v1",
+      "service_data": {
+        "config_entry_id": "01M6NRFAN73Q5FCX5818N9STTS"
+      },
+      "return_response": true,
+      "id": 3
+    },
+    "reply": {
+      "id": 3,
+      "type": "result",
+      "success": true,
+      "result": {
+        "context": {
+          "id": "01M6NRFFG8M9CZKSK55SHJXP16",
+          "parent_id": null,
+          "user_id": "3cc6cc340c944088b18b624463efadeb"
+        },
+        "response": {
+          "schema_version": 1,
+          "config_entry_id": "01M6NRFAN73Q5FCX5818N9STTS",
+          "epoch": "300bebdf2e38471aaf886109c54d1d7a",
+          "observation_revision": 35,
+          "policy_revision": 1,
+          "settings_revision": 2,
+          "flow_plan_revision": 1,
+          "policy": {
+            "enabled": true,
+            "stable_samples": 2,
+            "stable_interval_seconds": 1,
+            "stable_duration_seconds": 1,
+            "permit_ttl_seconds": 2,
+            "required_stages": [
+              "refill",
+              "nutrient",
+              "acid",
+              "mix"
+            ],
+            "sources": {
+              "ph": {
+                "mode": "reported",
+                "attribute": null,
+                "report_contract_confirmed": true
+              },
+              "ec": {
+                "mode": "reported",
+                "attribute": null,
+                "report_contract_confirmed": true
+              },
+              "level": {
+                "mode": "reported",
+                "attribute": null,
+                "report_contract_confirmed": true
+              }
+            }
+          },
+          "entities": {
+            "quality_status": "sensor.tank_pin_zhi_zhuang_tai",
+            "irrigation_permit": "binary_sensor.tank_yun_xu_guan_gai"
+          },
+          "quality": {
+            "state": "out_of_range",
+            "stable_count": 0,
+            "stable_since": null,
+            "reasons": [
+              "out_of_range"
+            ]
+          },
+          "completion": {
+            "state": "none",
+            "run_id": null,
+            "settled_at": null
+          },
+          "permit": {
+            "granted": false,
+            "run_id": null,
+            "expires_at": null,
+            "reasons": [
+              "policy_changed"
+            ]
+          }
+        }
+      }
+    },
+    "options": {
+      "dosing_parameters": {
+        "post_mix_seconds": 1.0,
+        "sample_wait_timeout_seconds": 15.0,
+        "stable_samples": 1.0,
+        "stable_interval_seconds": 1.0,
+        "flow_timeout_seconds": 60.0,
+        "ph_danger_low": 3.8,
+        "ec_danger_high": 1.3,
+        "ph_high_alarm": 6.8,
+        "ph_high_alarm_seconds": 600.0,
+        "safe_min_level_m": 0.5,
+        "pulse_seconds": 2.0,
+        "max_total_on_seconds": 20.0,
+        "max_pulses": 5.0
+      },
+      "safety_parameters": {
+        "ph_danger_low": 3.8,
+        "ec_danger_high": 1.3,
+        "ph_high_alarm": 6.8,
+        "ph_high_alarm_seconds": 600.0
+      },
+      "acid_parameters": {
+        "post_mix_seconds": 1.0,
+        "sample_wait_timeout_seconds": 15.0,
+        "stable_samples": 1.0,
+        "stable_interval_seconds": 1.0,
+        "flow_timeout_seconds": 60.0,
+        "safe_min_level_m": 0.5,
+        "pulse_seconds": 2.0,
+        "max_total_on_seconds": 20.0,
+        "max_pulses": 5.0
+      },
+      "mix_parameters": {
+        "safe_min_level_m": 0.5,
+        "flow_timeout_seconds": 1200.0
+      },
+      "control_contract_version": 5,
+      "control": {
+        "binding": {
+          "registry_id": "b6246d05af779ac3fb70f668a05673fe",
+          "platform": "switch",
+          "unique_id": "refill-output",
+          "config_entry_id": null
+        },
+        "commissioned": true,
+        "feedback_timeout": 1.0,
+        "allowed_weekdays": {
+          "refill": [
+            "mon",
+            "tue",
+            "wed",
+            "thu",
+            "fri",
+            "sat",
+            "sun"
+          ],
+          "nutrient": [
+            "mon",
+            "tue",
+            "wed",
+            "thu",
+            "fri",
+            "sat",
+            "sun"
+          ],
+          "acid": [
+            "mon",
+            "tue",
+            "wed",
+            "thu",
+            "fri",
+            "sat",
+            "sun"
+          ],
+          "mix": [
+            "mon",
+            "tue",
+            "wed",
+            "thu",
+            "fri",
+            "sat",
+            "sun"
+          ]
+        },
+        "nutrient_binding": {
+          "registry_id": "fbfa45012867ab01667a16e8fc7ff6c7",
+          "platform": "switch",
+          "unique_id": "dosing-fixture-nutrient",
+          "config_entry_id": null
+        },
+        "acid_binding": {
+          "registry_id": "00b2d0fa35fe1533a93905ec3245f4a4",
+          "platform": "switch",
+          "unique_id": "p3c-acid",
+          "config_entry_id": null
+        },
+        "circulation_binding": {
+          "registry_id": "753ea41955b9285309bb41a0f243c062",
+          "platform": "switch",
+          "unique_id": "dosing-fixture-circulation",
+          "config_entry_id": null
+        },
+        "nutrient_commissioned": true,
+        "nutrient_protection_confirmed": true,
+        "device_max_on_seconds": 3.0,
+        "alias_notes": "Independent outputs, fixture protection only",
+        "sample_mode": "reported",
+        "report_contract_confirmed": true,
+        "acid_commissioned": true,
+        "acid_device_max_on_seconds": 3.0,
+        "acid_protection_confirmed": true,
+        "acid_alias_notes": "independent acid",
+        "acid_sample_mode": "sequence",
+        "acid_sample_attribute": "sample",
+        "acid_report_contract_confirmed": false,
+        "mix_commissioned": true,
+        "circulation_device_max_on_seconds": 1800.0,
+        "circulation_protection_confirmed": true,
+        "circulation_alias_notes": "independent cutoff",
+        "automation_enabled": true,
+        "refill_enabled": true,
+        "nutrient_enabled": true,
+        "acid_enabled": true,
+        "mix_enabled": true
+      },
+      "ph": "sensor.ph",
+      "ec": "sensor.ec",
+      "level": "sensor.level",
+      "max_age_seconds": 300,
+      "settings_revision": 2,
+      "flow_plan": {
+        "rows": [
+          {
+            "stage": "refill",
+            "start_rule": "flow_start",
+            "delay_seconds": 0,
+            "condition": null,
+            "wait_timeout_seconds": 20
+          },
+          {
+            "stage": "mix",
+            "start_rule": "after_previous_started",
+            "delay_seconds": 1,
+            "condition": null,
+            "wait_timeout_seconds": 20
+          },
+          {
+            "stage": "nutrient",
+            "start_rule": "after_previous_finished",
+            "delay_seconds": 0,
+            "condition": null,
+            "wait_timeout_seconds": 20
+          },
+          {
+            "stage": "acid",
+            "start_rule": "after_previous_finished",
+            "delay_seconds": 0,
+            "condition": null,
+            "wait_timeout_seconds": 20
+          }
+        ],
+        "run_timeout_seconds": 120
+      },
+      "flow_plan_revision": 1,
+      "quality_policy": {
+        "schema_version": 1,
+        "revision": 1,
+        "enabled": true,
+        "stable_samples": 2,
+        "stable_interval_seconds": 1,
+        "stable_duration_seconds": 1,
+        "permit_ttl_seconds": 2,
+        "required_stages": [
+          "refill",
+          "nutrient",
+          "acid",
+          "mix"
+        ],
+        "sources": {
+          "ph": {
+            "mode": "reported",
+            "attribute": null,
+            "report_contract_confirmed": true
+          },
+          "ec": {
+            "mode": "reported",
+            "attribute": null,
+            "report_contract_confirmed": true
+          },
+          "level": {
+            "mode": "reported",
+            "attribute": null,
+            "report_contract_confirmed": true
+          }
+        }
+      }
+    },
+    "io": {
+      "refill": [],
+      "dosing": [],
+      "acid_on": false
+    },
+    "commit_count": 6,
+    "numbers": {
+      "level_low": 2.25,
+      "level_high": 2.4,
+      "ph_low": 5.4,
+      "ph_high": 5.8,
+      "ec_low": 0.8,
+      "ec_high": 0.9,
+      "refill_timeout": 190.0,
+      "ec_timeout": 90.0,
+      "ph_timeout": 190.0,
+      "mix_duration": 10.0
+    }
+  },
+  {
+    "request": {
+      "type": "call_service",
+      "domain": "uninus_nutriculture",
+      "service": "get_quality_v1",
+      "service_data": {
+        "config_entry_id": "01M6NRFAN73Q5FCX5818N9STTS"
+      },
+      "return_response": true,
+      "id": 4
+    },
+    "reply": {
+      "id": 4,
+      "type": "result",
+      "success": true,
+      "result": {
+        "context": {
+          "id": "01M6NRFFJWHQYCWJM056RQS6A8",
+          "parent_id": null,
+          "user_id": "3cc6cc340c944088b18b624463efadeb"
+        },
+        "response": {
+          "schema_version": 1,
+          "config_entry_id": "01M6NRFAN73Q5FCX5818N9STTS",
+          "epoch": "300bebdf2e38471aaf886109c54d1d7a",
+          "observation_revision": 35,
+          "policy_revision": 1,
+          "settings_revision": 2,
+          "flow_plan_revision": 1,
+          "policy": {
+            "enabled": true,
+            "stable_samples": 2,
+            "stable_interval_seconds": 1,
+            "stable_duration_seconds": 1,
+            "permit_ttl_seconds": 2,
+            "required_stages": [
+              "refill",
+              "nutrient",
+              "acid",
+              "mix"
+            ],
+            "sources": {
+              "ph": {
+                "mode": "reported",
+                "attribute": null,
+                "report_contract_confirmed": true
+              },
+              "ec": {
+                "mode": "reported",
+                "attribute": null,
+                "report_contract_confirmed": true
+              },
+              "level": {
+                "mode": "reported",
+                "attribute": null,
+                "report_contract_confirmed": true
+              }
+            }
+          },
+          "entities": {
+            "quality_status": "sensor.tank_pin_zhi_zhuang_tai",
+            "irrigation_permit": "binary_sensor.tank_yun_xu_guan_gai"
+          },
+          "quality": {
+            "state": "out_of_range",
+            "stable_count": 0,
+            "stable_since": null,
+            "reasons": [
+              "out_of_range"
+            ]
+          },
+          "completion": {
+            "state": "none",
+            "run_id": null,
+            "settled_at": null
+          },
+          "permit": {
+            "granted": false,
+            "run_id": null,
+            "expires_at": null,
+            "reasons": [
+              "policy_changed"
+            ]
+          }
+        }
+      }
+    },
+    "options": {
+      "dosing_parameters": {
+        "post_mix_seconds": 1.0,
+        "sample_wait_timeout_seconds": 15.0,
+        "stable_samples": 1.0,
+        "stable_interval_seconds": 1.0,
+        "flow_timeout_seconds": 60.0,
+        "ph_danger_low": 3.8,
+        "ec_danger_high": 1.3,
+        "ph_high_alarm": 6.8,
+        "ph_high_alarm_seconds": 600.0,
+        "safe_min_level_m": 0.5,
+        "pulse_seconds": 2.0,
+        "max_total_on_seconds": 20.0,
+        "max_pulses": 5.0
+      },
+      "safety_parameters": {
+        "ph_danger_low": 3.8,
+        "ec_danger_high": 1.3,
+        "ph_high_alarm": 6.8,
+        "ph_high_alarm_seconds": 600.0
+      },
+      "acid_parameters": {
+        "post_mix_seconds": 1.0,
+        "sample_wait_timeout_seconds": 15.0,
+        "stable_samples": 1.0,
+        "stable_interval_seconds": 1.0,
+        "flow_timeout_seconds": 60.0,
+        "safe_min_level_m": 0.5,
+        "pulse_seconds": 2.0,
+        "max_total_on_seconds": 20.0,
+        "max_pulses": 5.0
+      },
+      "mix_parameters": {
+        "safe_min_level_m": 0.5,
+        "flow_timeout_seconds": 1200.0
+      },
+      "control_contract_version": 5,
+      "control": {
+        "binding": {
+          "registry_id": "b6246d05af779ac3fb70f668a05673fe",
+          "platform": "switch",
+          "unique_id": "refill-output",
+          "config_entry_id": null
+        },
+        "commissioned": true,
+        "feedback_timeout": 1.0,
+        "allowed_weekdays": {
+          "refill": [
+            "mon",
+            "tue",
+            "wed",
+            "thu",
+            "fri",
+            "sat",
+            "sun"
+          ],
+          "nutrient": [
+            "mon",
+            "tue",
+            "wed",
+            "thu",
+            "fri",
+            "sat",
+            "sun"
+          ],
+          "acid": [
+            "mon",
+            "tue",
+            "wed",
+            "thu",
+            "fri",
+            "sat",
+            "sun"
+          ],
+          "mix": [
+            "mon",
+            "tue",
+            "wed",
+            "thu",
+            "fri",
+            "sat",
+            "sun"
+          ]
+        },
+        "nutrient_binding": {
+          "registry_id": "fbfa45012867ab01667a16e8fc7ff6c7",
+          "platform": "switch",
+          "unique_id": "dosing-fixture-nutrient",
+          "config_entry_id": null
+        },
+        "acid_binding": {
+          "registry_id": "00b2d0fa35fe1533a93905ec3245f4a4",
+          "platform": "switch",
+          "unique_id": "p3c-acid",
+          "config_entry_id": null
+        },
+        "circulation_binding": {
+          "registry_id": "753ea41955b9285309bb41a0f243c062",
+          "platform": "switch",
+          "unique_id": "dosing-fixture-circulation",
+          "config_entry_id": null
+        },
+        "nutrient_commissioned": true,
+        "nutrient_protection_confirmed": true,
+        "device_max_on_seconds": 3.0,
+        "alias_notes": "Independent outputs, fixture protection only",
+        "sample_mode": "reported",
+        "report_contract_confirmed": true,
+        "acid_commissioned": true,
+        "acid_device_max_on_seconds": 3.0,
+        "acid_protection_confirmed": true,
+        "acid_alias_notes": "independent acid",
+        "acid_sample_mode": "sequence",
+        "acid_sample_attribute": "sample",
+        "acid_report_contract_confirmed": false,
+        "mix_commissioned": true,
+        "circulation_device_max_on_seconds": 1800.0,
+        "circulation_protection_confirmed": true,
+        "circulation_alias_notes": "independent cutoff",
+        "automation_enabled": true,
+        "refill_enabled": true,
+        "nutrient_enabled": true,
+        "acid_enabled": true,
+        "mix_enabled": true
+      },
+      "ph": "sensor.ph",
+      "ec": "sensor.ec",
+      "level": "sensor.level",
+      "max_age_seconds": 300,
+      "settings_revision": 2,
+      "flow_plan": {
+        "rows": [
+          {
+            "stage": "refill",
+            "start_rule": "flow_start",
+            "delay_seconds": 0,
+            "condition": null,
+            "wait_timeout_seconds": 20
+          },
+          {
+            "stage": "mix",
+            "start_rule": "after_previous_started",
+            "delay_seconds": 1,
+            "condition": null,
+            "wait_timeout_seconds": 20
+          },
+          {
+            "stage": "nutrient",
+            "start_rule": "after_previous_finished",
+            "delay_seconds": 0,
+            "condition": null,
+            "wait_timeout_seconds": 20
+          },
+          {
+            "stage": "acid",
+            "start_rule": "after_previous_finished",
+            "delay_seconds": 0,
+            "condition": null,
+            "wait_timeout_seconds": 20
+          }
+        ],
+        "run_timeout_seconds": 120
+      },
+      "flow_plan_revision": 1,
+      "quality_policy": {
+        "schema_version": 1,
+        "revision": 1,
+        "enabled": true,
+        "stable_samples": 2,
+        "stable_interval_seconds": 1,
+        "stable_duration_seconds": 1,
+        "permit_ttl_seconds": 2,
+        "required_stages": [
+          "refill",
+          "nutrient",
+          "acid",
+          "mix"
+        ],
+        "sources": {
+          "ph": {
+            "mode": "reported",
+            "attribute": null,
+            "report_contract_confirmed": true
+          },
+          "ec": {
+            "mode": "reported",
+            "attribute": null,
+            "report_contract_confirmed": true
+          },
+          "level": {
+            "mode": "reported",
+            "attribute": null,
+            "report_contract_confirmed": true
+          }
+        }
+      }
+    },
+    "io": {
+      "refill": [],
+      "dosing": [],
+      "acid_on": false
+    },
+    "commit_count": 6,
+    "numbers": {
+      "level_low": 2.25,
+      "level_high": 2.4,
+      "ph_low": 5.4,
+      "ph_high": 5.8,
+      "ec_low": 0.8,
+      "ec_high": 0.9,
+      "refill_timeout": 190.0,
+      "ec_timeout": 90.0,
+      "ph_timeout": 190.0,
+      "mix_duration": 10.0
+    }
+  }
+]

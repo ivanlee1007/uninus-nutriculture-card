@@ -297,6 +297,114 @@
       }catch(error){if(current())this.recipeNotice=error?.code==='recipe_conflict'?'配方版本衝突；草稿保留，請明確重新整理':'無法完成配方操作；草稿保留，請重新整理後再試';}
       finally{if(this.recipeFlights.get(entry)===op)this.recipeFlights.delete(entry);if(this.recipeOperation===op){if(!current())this.recipeNotice='連線已變更；草稿保留，請明確重新整理';this.recipeOperation=null;this.renderRecipes();}}
     }
+    initQuality() {
+      if(this.qualityPanel)return;
+      this.qualityFlights=new Map();this.qualityGeneration=0;this.qualityOwner={};this.qualityInputs=new Map();
+      this.qualityPanel=make('details');this.qualityPanel.dataset.qualityPanel='';this.qualityPanel.append(make('summary','資料品質與灌溉許可（P4b）'));
+      for(const [key,label] of [['truth','資料品質'],['completion','本輪必要完成'],['permit','灌溉許可'],['info','窗口／期限（僅資訊）']]){const p=make('p',label);p.dataset['quality'+key[0].toUpperCase()+key.slice(1)]='';this['quality'+key[0].toUpperCase()+key.slice(1)]=p;this.qualityPanel.append(p);}
+      this.qualityForm=make('section');this.qualityPanel.append(this.qualityForm);
+      const add=(key,label,type='number',choices=null)=>{const row=make('label',label),input=make(choices?'select':'input');input.dataset.qualityField=key;input.setAttribute('aria-label',label);if(!choices)input.type=type;else for(const v of choices){const o=make('option',v);o.value=v;input.append(o);}if(type==='number'){input.min='1';input.max=key==='stable_samples'?'100':'86400';input.step='1';}input.addEventListener(type==='checkbox'||choices?'change':'input',()=>{this.qualityDirty=true;this.renderQuality();});row.append(input);this.qualityForm.append(row);this.qualityInputs.set(key,input);};
+      add('enabled','啟用品質策略','checkbox');add('stable_samples','穩定樣本數（1–100 筆）');add('stable_interval_seconds','穩定樣本間隔（秒）');add('stable_duration_seconds','穩定窗口跨度（秒）');add('permit_ttl_seconds','許可最長有效期 TTL（秒）');
+      for(const [k,l] of [['refill','補水'],['nutrient','加養'],['acid','加酸'],['mix','混合']])add('required.'+k,'本輪必要階段：'+l+'（至少一項；不改啟用設定）','checkbox');
+      for(const [k,l] of [['ph','pH'],['ec','EC'],['level','液位']]){add(k+'.mode',l+' 新實測來源模式','text',['reported','sequence','timestamp']);add(k+'.attribute',l+' 來源屬性（reported 留空；最多128 Unicode字元）','text');add(k+'.confirmed',l+' 已確認上游新實測合約','checkbox');}
+      this.qualityButtons={};for(const [key,label] of [['refresh','重新整理品質'],['save','保存品質策略'],['cancel','取消品質草稿']]){const b=make('button',label);b.type='button';b.dataset['quality'+key[0].toUpperCase()+key.slice(1)]='';b.addEventListener('click',()=>{if(key==='cancel'){if(this.qualityData)this.qualityDraft(this.qualityData);this.qualityNotice='已取消草稿；未寫入';this.renderQuality();}else this.qualityRequest(key==='save');});this.qualityButtons[key]=b;this.qualityForm.append(b);}
+      this.qualityMessage=make('p');this.qualityMessage.dataset.qualityMessage='';this.qualityMessage.setAttribute('role','status');this.qualityPanel.append(this.qualityMessage);
+      this.qualityPanel.addEventListener('toggle',()=>{if(this.qualityPanel.open&&!this.qualityData)this.qualityRequest(false);});
+      this.shadowRoot.append(make('style','[data-quality-panel] label{display:block;margin:10px 0}[data-quality-panel] input:not([type=checkbox]),[data-quality-panel] select{display:block;width:100%;min-width:0;max-width:100%}[data-quality-panel] input[type=checkbox]{width:auto}[data-quality-panel] button{margin:4px;max-width:100%}[data-quality-panel] [hidden]{display:none}'));this.root.append(this.qualityPanel);
+    }
+    qualityPolicy(p) {
+      if(!exact(p,['enabled','stable_samples','stable_interval_seconds','stable_duration_seconds','permit_ttl_seconds','required_stages','sources'])||typeof p.enabled!=='boolean'||!['stable_samples','stable_interval_seconds','stable_duration_seconds','permit_ttl_seconds'].every(k=>Number.isInteger(p[k])&&p[k]>=1&&p[k]<=(k==='stable_samples'?100:86400))||!Array.isArray(p.required_stages)||p.required_stages.length<1||p.required_stages.length>4||new Set(p.required_stages).size!==p.required_stages.length||!p.required_stages.every(k=>STAGES.includes(k))||!exact(p.sources,['ph','ec','level']))return false;
+      return Object.values(p.sources).every(s=>exact(s,['mode','attribute','report_contract_confirmed'])&&['reported','sequence','timestamp'].includes(s.mode)&&typeof s.report_contract_confirmed==='boolean'&&(s.mode==='reported'?s.attribute===null:typeof s.attribute==='string'&&Array.from(s.attribute).length>=1&&Array.from(s.attribute).length<=128)&&(!p.enabled||s.report_contract_confirmed));
+    }
+    qualityDTO(d,entry) {
+      const nullable=v=>v===null||typeof v==='string';
+      const date=v=>{if(v===null)return true;if(typeof v!=='string'||!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,6})?(?:Z|[+-]\d\d:\d\d)$/.test(v)||!Number.isFinite(Date.parse(v)))return false;const m=v.match(/^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)/);return +m[2]>=1&&+m[2]<=12&&+m[3]>=1&&+m[3]<=new Date(Date.UTC(+m[1],+m[2],0)).getUTCDate()&&+m[4]<24&&+m[5]<60&&+m[6]<60;};
+      const reasons=v=>Array.isArray(v)&&v.length<=32&&new Set(v).size===v.length&&v.every(k=>['policy_disabled','unsupported_control','source_invalid','source_stale','sample_unconfirmed','sample_regressed','out_of_range','stabilizing','no_current_run','run_incomplete','required_stage_disabled','stage_skipped','no_actual_start','closure_pending','output_not_off','fault','master_off','capability_lost','settings_changed','policy_changed','new_run','single_stage','aborted','entry_inactive','expired','candidate_consumed'].includes(k));
+      return !!(exact(d,['schema_version','config_entry_id','epoch','observation_revision','policy_revision','settings_revision','flow_plan_revision','policy','entities','quality','completion','permit'])&&d.schema_version===1&&typeof d.config_entry_id==='string'&&Array.from(d.config_entry_id).length>=1&&Array.from(d.config_entry_id).length<=128&&(!entry||d.config_entry_id===entry)&&typeof d.epoch==='string'&&/^[a-f0-9]{32}$/.test(d.epoch)&&['observation_revision','policy_revision','settings_revision','flow_plan_revision'].every(k=>revision(d[k]))&&this.qualityPolicy(d.policy)&&exact(d.entities,['quality_status','irrigation_permit'])&&Object.values(d.entities).every(nullable)&&exact(d.quality,['state','stable_count','stable_since','reasons'])&&['disabled','unsupported','invalid','out_of_range','stabilizing','qualified'].includes(d.quality.state)&&Number.isInteger(d.quality.stable_count)&&d.quality.stable_count>=0&&d.quality.stable_count<=100&&date(d.quality.stable_since)&&reasons(d.quality.reasons)&&exact(d.completion,['state','run_id','settled_at'])&&['none','running','completed','incomplete','aborted','fault'].includes(d.completion.state)&&nullable(d.completion.run_id)&&date(d.completion.settled_at)&&exact(d.permit,['granted','run_id','expires_at','reasons'])&&typeof d.permit.granted==='boolean'&&nullable(d.permit.run_id)&&date(d.permit.expires_at)&&reasons(d.permit.reasons));
+    }
+    qualityNative() {
+      const s=this._hass?.states?.[this.config?.quality_entity];if(!s||!s.attributes)return null;
+      const d=Object.fromEntries(Object.entries(s.attributes).filter(([k])=>!HA_METADATA.includes(k)));
+      if(!this.qualityDTO(d)||s.state!==d.quality.state||d.entities.quality_status!==this.config.quality_entity)return null;
+      if(this.config.entity){const s=this.status();if(!writable(s)||!isControl(s)||s.attributes.settings_target?.config_entry_id!==d.config_entry_id)return null;}
+      return d;
+    }
+    qualityPrincipalKey() {
+      const u=this._hass?.user;
+      return JSON.stringify([typeof u?.id==='string'?u.id:null,u?.is_admin===true,!!u&&u.is_active!==false]);
+    }
+    qualityObservePrincipal() {
+      const principal=this.qualityPrincipalKey();
+      if(this.qualityPrincipal===principal)return;
+      // Capture primitives, never the mutable hass.user object. Transport flights
+      // retain their locks until settlement; only their UI/data ownership expires.
+      this.qualityPrincipal=principal;this.qualityOwner={};this.qualityGeneration++;
+      this.qualityData=null;this.qualityDataOwner=null;this.qualitySyncBase=null;
+      this.qualityBaseline=null;this.qualityBaselinePrincipal=null;this.qualityDirty=false;
+      this.qualityOperation=null;this.qualityAttemptedNative=null;this.qualityNotice='';
+      for(const i of this.qualityInputs.values()){if(i.type==='checkbox')i.checked=false;else i.value='';}
+    }
+    qualityAdmin() {
+      const u=this._hass?.user;
+      return typeof u?.id==='string'&&u.id.trim()!==''&&u.is_admin===true&&u.is_active!==false;
+    }
+    qualityWritable() {this.qualityObservePrincipal();const d=this.qualityNative();return !!(d&&this.qualityAdmin()&&this.config?.entity&&this.status()?.attributes.schema_version===5&&this._hass?.services?.uninus_nutriculture?.get_quality_v1&&this._hass?.services?.uninus_nutriculture?.save_quality_policy_v1&&typeof this._hass.callWS==='function'&&!this.qualityOffline);}
+    qualityDraft(d) {
+      this.qualityBaseline=structuredClone(d);this.qualityBaselinePrincipal=this.qualityPrincipal;const p=d.policy;for(const [k,i] of this.qualityInputs){let v;if(k.startsWith('required.'))v=p.required_stages.includes(k.split('.')[1]);else if(k.includes('.')){const [s,f]=k.split('.');v=p.sources[s][f==='confirmed'?'report_contract_confirmed':f];}else v=p[k];if(i.type==='checkbox')i.checked=v;else i.value=v??'';}this.qualityDirty=false;
+    }
+    qualityDraftPolicy() {const get=k=>this.qualityInputs.get(k),p={enabled:get('enabled').checked};for(const k of ['stable_samples','stable_interval_seconds','stable_duration_seconds','permit_ttl_seconds'])p[k]=get(k).value===''?null:Number(get(k).value);p.required_stages=STAGES.filter(k=>get('required.'+k).checked);p.sources=Object.fromEntries(['ph','ec','level'].map(k=>[k,{mode:get(k+'.mode').value,attribute:get(k+'.attribute').value||null,report_contract_confirmed:get(k+'.confirmed').checked}]));return p;}
+    updateQuality() {
+      this.initQuality();this.qualityObservePrincipal();const ws=this._hass?.callWS,conn=this._hass?.connection;
+      if(this.qualityConnection!==conn||this.qualityWS!==ws)this.qualityOwner={};
+      if(this.qualityConnection!==conn){if(this.qualityConnection?.removeEventListener){const n=this.qualityNative();this.qualityBlockedNative=n?`${n.config_entry_id}:${n.epoch}:${n.observation_revision}`:null;this.qualityConnection.removeEventListener('disconnected',this.qualityDisconnect);this.qualityConnection.removeEventListener('ready',this.qualityReady);}this.qualityConnection=conn;this.qualityDisconnect=()=>{const n=this.qualityNative();this.qualityBlockedNative=n?`${n.config_entry_id}:${n.epoch}:${n.observation_revision}`:null;this.qualityOffline=true;this.qualityOwner={};this.qualityGeneration++;this.qualityData=null;this.renderQuality();};this.qualityReady=()=>{this.qualityOffline=false;this.qualityOwner={};this.qualityGeneration++;this.qualityData=null;this.renderQuality();};if(conn?.addEventListener){conn.addEventListener('disconnected',this.qualityDisconnect);conn.addEventListener('ready',this.qualityReady);}}
+      if(this.qualityWS!==ws){if(this.qualityWS){const n=this.qualityNative();this.qualityBlockedNative=n?`${n.config_entry_id}:${n.epoch}:${n.observation_revision}`:null;}this.qualityWS=ws;this.qualityGeneration++;this.qualityData=null;}if(conn?.connected===false)this.qualityOffline=true;
+      const d=this.qualityNative(),identity=JSON.stringify([this.config?.entity,this.config?.quality_entity,d?.config_entry_id??this.qualityBoundEntry]);
+      if(!d||this.qualityIdentity!==identity||this.qualityOffline)this.qualityOwner={};
+      if(this.qualityIdentity!==identity){this.qualityIdentity=identity;this.qualityGeneration++;this.qualityData=null;this.qualityBaseline=null;this.qualityDirty=false;this.qualityOperation=null;this.qualityNotice='';this.qualityBoundEntry=d?.config_entry_id;}
+      if(d&&this.qualityObservedEpoch&&this.qualityObservedEpoch!==d.epoch){this.qualityGeneration++;this.qualityData=null;}this.qualityObservedEpoch=d?.epoch;
+      if(this.config?.quality_entity){if(this.qualityPanel.parentNode!==this.root)this.root.append(this.qualityPanel);}else this.qualityPanel.remove();this.qualityPanel.hidden=!this.config?.quality_entity;this.renderQuality();this.qualityConverge();
+    }
+    qualityConverge() {
+      this.qualityObservePrincipal();const n=this.qualityNative(),a=(this.qualityDataOwner===this.qualityOwner?this.qualityData:null)??(this.qualitySyncBase?.owner===this.qualityOwner?this.qualitySyncBase.dto:null);
+      if(!this.qualityPanel?.open||!this.qualityWritable()||!this.isConnected||!a||!n||a.epoch!==n.epoch||a.config_entry_id!==n.config_entry_id||n.observation_revision<=a.observation_revision||this.qualityOperation||this.qualityFlights.has(n.config_entry_id))return;
+      const token=`${n.config_entry_id}:${n.epoch}:${n.observation_revision}`;
+      if(token===this.qualityBlockedNative||token===this.qualityAttemptedNative||this.qualityQueued)return;
+      const owner=this.qualityOwner,generation=this.qualityGeneration;this.qualityQueued=true;
+      queueMicrotask(()=>{this.qualityQueued=false;if(this.qualityOwner===owner&&this.qualityGeneration===generation)this.qualityRequest(false,true);});
+    }
+    renderQuality() {
+      if(!this.qualityPanel)return;this.qualityObservePrincipal();const n=this.qualityNative(),a=this.qualityDataOwner===this.qualityOwner?this.qualityData:null;const connected=!this.qualityOffline&&this.isConnected&&this._hass?.connection?.connected!==false;
+      const joined=connected&&n&&this.qualityBlockedNative!==`${n.config_entry_id}:${n.epoch}:${n.observation_revision}`&&(this.config?.entity?(a&&a.config_entry_id===n.config_entry_id&&a.epoch===n.epoch&&a.observation_revision===n.observation_revision):true);
+      text(this.qualityTruth,'資料品質：'+(joined?n.quality.state:'未知／未支援或尚未讀回'));
+      text(this.qualityCompletion,'本輪必要完成：'+(joined?n.completion.state:'未知'));
+      const usable=joined&&n.policy.enabled&&!['disabled','unsupported','invalid'].includes(n.quality.state);
+      text(this.qualityPermit,'灌溉許可（P4b 唯一權威）：'+(usable?(n.permit.granted?'許可 True':'不許可 False'):'未知／不許可'));
+      text(this.qualityInfo,joined?`穩定 ${n.quality.stable_count}/${n.policy.stable_samples} 筆；窗口 ${n.policy.stable_duration_seconds} 秒；起點 ${n.quality.stable_since??'無'}；到期 ${n.permit.expires_at??'無'}（僅資訊，不由瀏覽器計時授權）`:'品質資料未確認');
+      this.qualityForm.hidden=!this.config?.entity;const busy=!!this.qualityOperation||this.qualityFlights.has(n?.config_entry_id);const writable=this.qualityWritable();for(const i of this.qualityInputs.values())i.disabled=(busy&&!this.qualityOperation?.automatic)||!writable||!this.qualityBaseline;
+      this.qualityButtons.save.disabled=busy||!writable||!this.qualityBaseline||!this.qualityPolicy(this.qualityDraftPolicy());this.qualityButtons.refresh.disabled=busy||!writable;this.qualityButtons.cancel.disabled=busy||!this.qualityBaseline;
+      text(this.qualityMessage,(this.qualityNotice??'')+(this._hass&&!this._hass.connection?'（無原生連線物件：UI harness／未驗證連線）':''));
+    }
+    async qualityRequest(save=false,automatic=false) {
+      this.qualityObservePrincipal();const n=this.qualityNative();if(!n||!this.qualityWritable()||this.qualityFlights.has(n.config_entry_id))return;const base=this.qualityBaseline,policy=save?this.qualityDraftPolicy():null;if(save&&(!base||this.qualityBaselinePrincipal!==this.qualityPrincipal||!this.qualityPolicy(policy)))return;
+      const payload={config_entry_id:n.config_entry_id};if(save)Object.assign(payload,{expected_policy_revision:base.policy_revision,expected_settings_revision:base.settings_revision,expected_flow_plan_revision:base.flow_plan_revision,policy});
+      const token=`${n.config_entry_id}:${n.epoch}:${n.observation_revision}`;
+      if(automatic&&(token===this.qualityAttemptedNative||token===this.qualityBlockedNative))return;
+      this.qualityAttemptedNative=token;
+      const op={entry:n.config_entry_id,epoch:n.epoch,readEpoch:n.epoch,owner:this.qualityOwner,principal:this.qualityPrincipal,automatic,generation:this.qualityGeneration,ws:this._hass.callWS,connection:this._hass.connection,hass:this._hass};this.qualityOperation=op;this.qualityFlights.set(op.entry,op);this.qualityNotice='等待後端讀回…';this.renderQuality();
+      const owned=()=>{this.qualityObservePrincipal();return this.qualityAdmin()&&this.qualityPrincipal===op.principal&&this.isConnected&&!this.qualityOffline&&this._hass.connection?.connected!==false&&this.qualityOperation===op&&this.qualityOwner===op.owner&&this._hass.callWS===op.ws&&this._hass.connection===op.connection&&this.qualityNative()?.config_entry_id===op.entry;};
+      const current=()=>owned()&&this.qualityGeneration===op.generation&&this.qualityNative()?.epoch===op.readEpoch;
+      const call=(service,data)=>op.ws.call(op.hass,{type:'call_service',domain:'uninus_nutriculture',service,service_data:data,return_response:true});
+      try{let result=await call(save?'save_quality_policy_v1':'get_quality_v1',payload);if(!owned())return;let dto=result?.response;if(!this.qualityDTO(dto,op.entry))throw {code:'invalid_response'};
+        // Only this owned source-changing Save may transfer its acceptance fence.
+        // Native publication alone never transfers ownership or accepts a reply.
+        if(save&&dto.epoch!==op.epoch){const live=this.qualityNative();if(this.qualityGeneration!==op.generation+1||sameValue(base.policy.sources,policy.sources)||dto.policy_revision!==base.policy_revision+1||dto.settings_revision!==base.settings_revision||dto.flow_plan_revision!==base.flow_plan_revision||!sameValue(dto.policy,policy)||dto.observation_revision<=n.observation_revision||!sameValue(dto,live))return;op.readEpoch=dto.epoch;op.generation=this.qualityGeneration;}
+        if(!current()||dto.epoch!==op.readEpoch)return;
+        if(save){if(dto.policy_revision!==base.policy_revision+1||!sameValue(dto.policy,policy))throw {code:'invalid_response'};result=await call('get_quality_v1',{config_entry_id:op.entry});if(!current())return;const read=result?.response;if(!this.qualityDTO(read,op.entry)||read.epoch!==op.readEpoch||read.policy_revision!==dto.policy_revision||!sameValue(read.policy,policy))throw {code:'invalid_response'};dto=read;}
+        const native=this.qualityNative();if(!sameValue(dto,native)||token===this.qualityBlockedNative)throw {code:'invalid_response'};
+        this.qualityData=structuredClone(dto);this.qualityDataOwner=op.owner;this.qualitySyncBase={owner:op.owner,dto:this.qualityData};if(save||!this.qualityDirty)this.qualityDraft(dto);this.qualityNotice=save?'品質策略已保存並讀回；未啟動任何輸出':'品質資料已讀回；未寫入';
+      }catch(e){if(current()){this.qualityData=null;this.qualityNotice=e?.code==='quality_conflict'?'品質版本衝突；草稿保留，請取消後重新整理':'品質操作失敗；草稿保留，請明確重新整理';}}
+      finally{if(this.qualityFlights.get(op.entry)===op)this.qualityFlights.delete(op.entry);if(this.qualityOperation===op){const valid=current();if(!valid)this.qualityNotice='連線或版本已變更；草稿保留，請明確重新整理';this.qualityOperation=null;this.renderQuality();if(automatic&&valid)this.qualityConverge();}else this.renderQuality();}
+    }
     static getConfigElement() { return document.createElement(`${TAG}-editor`); }
     static getStubConfig(hass) {
       const entity = Object.keys(hass?.states ?? {}).find(id => /^sensor\.[a-z0-9_]+$/.test(id) && (isShadow(hass.states[id]) || isControl(hass.states[id])));
@@ -304,7 +412,7 @@
     }
     getCardSize() { return this.details.isConnected && this.details.open ? 12 : 4; }
     connectedCallback() { this.update(); }
-    disconnectedCallback() { this.invalidate(); }
+    disconnectedCallback() { this.invalidate();if(this.qualityPanel){const n=this.qualityNative();this.qualityBlockedNative=n?`${n.config_entry_id}:${n.epoch}:${n.observation_revision}`:null;this.qualityGeneration++;this.qualityData=null;if(this.qualityConnection?.removeEventListener){this.qualityConnection.removeEventListener('disconnected',this.qualityDisconnect);this.qualityConnection.removeEventListener('ready',this.qualityReady);}this.qualityConnection=null;this.renderQuality();} }
     invalidate() {
       this.epoch = (this.epoch ?? 0) + 1;this.planOperation=null;this.previewOperation=null;this.planEpoch=(this.planEpoch??0)+1;this.recipeOperation=null;this.recipeGeneration=(this.recipeGeneration??0)+1;if(this.recipeConfirm)this.recipeConfirm.hidden=true;
       this.groupOperation=null;
@@ -312,7 +420,7 @@
       for (const row of this.controlRows.values()) { row.operation = null; row.error = ''; }
     }
     setConfig(config) {
-      if (!config || typeof config.entity !== 'string' || !/^sensor\.[a-z0-9_]+$/.test(config.entity)) throw new Error('請選擇狀態 sensor Entity');
+      if (!config || (config.entity!==undefined&&(typeof config.entity!=='string'||!/^sensor\.[a-z0-9_]+$/.test(config.entity))) || (config.entity===undefined&&(typeof config.quality_entity!=='string'||!/^sensor\.[a-z0-9_]+$/.test(config.quality_entity))) || (config.quality_entity!==undefined&&(typeof config.quality_entity!=='string'||!/^sensor\.[a-z0-9_]+$/.test(config.quality_entity)))) throw new Error('請選擇狀態 sensor Entity');
       this.invalidate();
       if (this.config?.entity !== config.entity) {
         for (const row of this.rows.values()) { row.dirty = false; row.error = ''; }
@@ -647,7 +755,7 @@
       const parameterWarning = compatible && blocked ? `${blocked} 項參數無法儲存；請展開參數檢查 Number Entity。` : '';
       text(this.quality,[warning,parameterWarning,...reasons].filter(Boolean).join('\n'));
       this.quality.classList.toggle('warn',!compatible || status.state !== 'within_range' || blocked>0);
-      this.updateRows(); this.updateControls();this.updateGroup();this.updatePlan();this.updateRecipes();
+      this.updateRows(); this.updateControls();this.updateGroup();this.updatePlan();this.updateRecipes();this.updateQuality();
     }
   }
   class NutricultureEditor extends HTMLElement {
@@ -655,6 +763,7 @@
       super(); this.attachShadow({mode:'open'});
       this.shadowRoot.append(make('style',`${style}label{display:block;margin:12px 0;font-size:14px}select{width:100%;max-width:100%;padding:10px;box-sizing:border-box;color:inherit;background:var(--card-background-color,#fff)}input[type=checkbox]{width:auto;margin-right:8px}`));
       this.entityInput = make('select'); this.entityInput.name = 'entity';
+      this.qualityInput=make('ha-selector');this.qualityInput.selector={entity:{domain:'sensor'}};this.qualityInput.dataset.qualityEntity='';const qlabel=make('label','品質入口 quality_entity（可選；不猜 Entity ID）');qlabel.append(this.qualityInput);this.shadowRoot.append(qlabel);this.qualityInput.addEventListener('value-changed',e=>{if(e.currentTarget!==this.qualityInput)return;const value=e.detail?.value;this.config={...this.config};if(value)this.config.quality_entity=value;else delete this.config.quality_entity;this.dispatchEvent(new CustomEvent('config-changed',{detail:{config:structuredClone(this.config)},bubbles:true,composed:true}));});
       this.titleInput = make('input'); this.titleInput.name = 'title'; this.titleInput.type = 'text';
       this.showInput = make('input'); this.showInput.name = 'show_parameters'; this.showInput.type = 'checkbox';
       for (const [label,input] of [['狀態 Entity',this.entityInput],['標題',this.titleInput],['顯示參數調整',this.showInput]]) {
@@ -669,9 +778,10 @@
       this.config = structuredClone(config ?? {});
       this.titleInput.value = this.config.title ?? '';
       this.showInput.checked = this.config.show_parameters !== false;
+      this.qualityInput.value=this.config.quality_entity??'';
       this.options();
     }
-    set hass(hass) { this._hass = hass; this.options(); }
+    set hass(hass) { this._hass = hass;this.qualityInput.hass=hass; this.options(); }
     options() {
       const ids = Object.keys(this._hass?.states ?? {}).filter(id=>/^sensor\.[a-z0-9_]+$/.test(id));
       if (this.config?.entity && !ids.includes(this.config.entity)) ids.push(this.config.entity);

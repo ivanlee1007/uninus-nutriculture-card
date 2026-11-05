@@ -105,6 +105,13 @@ test('schema5 strict wire consumer never grants controls to malformed snapshots'
  for(const state of ['running','waiting_delay','waiting_condition','waiting_resource']){const s=base();s['sensor.status'].state=s['sensor.status'].attributes.flow_state=state;s['switch.actual_flow_run'].state='on';assert.equal(check(s).id,'switch.actual_acid_enabled');}
 });
 
+test('quality policy uses exact shape and Unicode codepoints independently of legacy controls',()=>{
+ const o={qualityPolicy:C.prototype.qualityPolicy};
+ const p={enabled:false,stable_samples:8,stable_interval_seconds:300,stable_duration_seconds:2100,permit_ttl_seconds:300,required_stages:['refill'],sources:Object.fromEntries(['ph','ec','level'].map(k=>[k,{mode:'reported',attribute:null,report_contract_confirmed:false}]))};
+ assert.equal(o.qualityPolicy(p),true);
+ for(const mutate of [p=>p.extra=1,p=>p.stable_samples=true,p=>p.required_stages=[],p=>p.sources.ph.mode='future',p=>p.enabled=true]){const d=structuredClone(p);mutate(d);assert.equal(o.qualityPolicy(d),false);}
+ p.sources.ph.mode='sequence';p.sources.ph.attribute='🌱'.repeat(128);assert.equal(o.qualityPolicy(p),true);p.sources.ph.attribute+='🌱';assert.equal(o.qualityPolicy(p),false);
+});
 test('registration is idempotent with a second resource evaluation',()=>{
   vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../uninus-nutriculture-card.js'),'utf8'),context);
   assert.equal(elements.size,2);assert.equal(context.window.customCards.length,1);

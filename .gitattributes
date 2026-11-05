@@ -10,3 +10,11 @@ uninus-nutriculture-card.js -text whitespace=blank-at-eol,blank-at-eof,space-bef
 
 # Historical frozen checkpoint retains its recorded final blank line.
 P3C_CARD_PROGRESS.md whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+
+# Preserve exact independently reviewed P4b source/fixture bytes; retain whitespace checks.
+P4B_Q1_EXTRA_R3_HANDOFF.md -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+tests/p4b_browser.py -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+tests/p4b_r2_capture/events.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+tests/p4b_r2_capture/grant.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+tests/p4b_r2_capture/wire.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+uninus-nutriculture-card.js -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
