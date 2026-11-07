@@ -18,3 +18,12 @@ tests/p4b_r2_capture/events.json -text whitespace=blank-at-eol,blank-at-eof,spac
 tests/p4b_r2_capture/grant.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 tests/p4b_r2_capture/wire.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 uninus-nutriculture-card.js -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+
+# P4c frozen source/permanent-test raw-byte preservation; no whitespace waiver.
+tests/p4b_browser.py -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+tests/p4b_r2_capture/events.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+tests/p4b_r2_capture/grant.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+tests/p4b_r2_capture/wire.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+
+# Immutable P4c allowlisted evidence retains raw bytes and historical whitespace only.
+docs/evidence/p4c-publication-r4/** -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol

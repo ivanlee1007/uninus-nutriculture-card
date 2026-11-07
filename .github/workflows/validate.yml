@@ -28,7 +28,7 @@ jobs:
           files=list(pathlib.Path(os.environ.get('CARD_GATE_ROOT','test-results/gate')).glob('*/result.json'))
           assert len(files)==1
           results={r['name']:r for r in json.loads(files[0].read_text())['results']}
-          for name,count in [('unit',14),('browser',38),('p4a-browser',16),('p4b-browser',21)]:
+          for name,count in [('unit',14),('browser',38),('p4a-browser',16),('p4b-browser',21),('p4c-browser',16)]:
               row=results[name]
               assert row['returncode']==0 and row['expected_cases']==row['executed_cases']==count
           PY

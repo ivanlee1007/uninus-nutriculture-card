@@ -24,6 +24,33 @@
     ['ec_danger_high','危險高 EC',0,100,.01,'mS/cm'],['ph_high_alarm','高 pH 告警',0,14,.1,'pH'],
     ['ph_high_alarm_seconds','高 pH 告警延遲',1,86400,1,'s']
   ];
+  // P4c structural vocabulary copied from the frozen schema; separate from legacy DTOs.
+  const P4C_DEFS={"Stage":{"type":"object","properties":{"phase":{"anyOf":[{"enum":["confirming_off","mixing","pulsing","refilling","stabilizing","starting","starting_circulation","stopping","waiting_condition","waiting_delay","waiting_resource","waiting_sample"]},{"type":"null"}]},"result":{"anyOf":[{"enum":["completed","aborted","fault","skipped_disabled","skipped_weekday","blocked_dependency"]},{"type":"null"}]},"started_at":{"anyOf":[{"type":"string","format":"date-time","pattern":"^\\d{4}-\\d{2}-\\d{2}T.*\\+00:00$"},{"type":"null"}]},"settled_at":{"anyOf":[{"type":"string","format":"date-time","pattern":"^\\d{4}-\\d{2}-\\d{2}T.*\\+00:00$"},{"type":"null"}]},"waiting_reason":{"anyOf":[{"enum":["circulation_lost","condition_not_met","delay_pending","dependency_not_started","dose_budget_exhausted","ec_danger","ec_high","ec_timeout","emergency_stop","entry_inactive","flow_timeout","level_unsafe","no_actual_start","none","operation_failed","output_already_owned","output_identity_invalid","output_not_off","output_unbound","output_unexpected","ph_danger","ph_high","ph_low","ph_timeout","refill_timeout","resource_chemical","restart_output_not_off","revoked","sample_invalid","sample_timeout","source_invalid","stage_skipped","start_cancelled","start_unconfirmed","stop_unconfirmed","weekday"]},{"type":"null"}]}},"required":["phase","result","started_at","settled_at","waiting_reason"],"additionalProperties":false},"Run":{"type":"object","properties":{"run_id":{"type":"string","pattern":"^[0-9a-f]{32}$"},"epoch":{"type":"string","pattern":"^[0-9a-f]{32}$"},"settings_revision":{"type":"integer","minimum":0,"maximum":9007199254740991},"flow_plan_revision":{"type":"integer","minimum":0,"maximum":9007199254740991},"state":{"enum":["accepted","running","stopping","completed","stopped","incomplete","failed"]},"closure":{"enum":["pending","unconfirmed","confirmed"]},"reason":{"enum":["circulation_lost","condition_not_met","delay_pending","dependency_not_started","dose_budget_exhausted","ec_danger","ec_high","ec_timeout","emergency_stop","entry_inactive","flow_timeout","level_unsafe","no_actual_start","none","operation_failed","output_already_owned","output_identity_invalid","output_not_off","output_unbound","output_unexpected","ph_danger","ph_high","ph_low","ph_timeout","refill_timeout","resource_chemical","restart_output_not_off","revoked","sample_invalid","sample_timeout","source_invalid","stage_skipped","start_cancelled","start_unconfirmed","stop_unconfirmed","weekday"]},"accepted_at":{"type":"string","format":"date-time","pattern":"^\\d{4}-\\d{2}-\\d{2}T.*\\+00:00$"},"started_at":{"anyOf":[{"type":"string","format":"date-time","pattern":"^\\d{4}-\\d{2}-\\d{2}T.*\\+00:00$"},{"type":"null"}]},"finished_at":{"anyOf":[{"type":"string","format":"date-time","pattern":"^\\d{4}-\\d{2}-\\d{2}T.*\\+00:00$"},{"type":"null"}]},"transition_at":{"type":"string","format":"date-time","pattern":"^\\d{4}-\\d{2}-\\d{2}T.*\\+00:00$"},"stages":{"type":"object","properties":{"refill":{"$ref":"#/$defs/Stage"},"nutrient":{"$ref":"#/$defs/Stage"},"acid":{"$ref":"#/$defs/Stage"},"mix":{"$ref":"#/$defs/Stage"}},"required":["refill","nutrient","acid","mix"],"additionalProperties":false}},"required":["run_id","epoch","settings_revision","flow_plan_revision","state","closure","reason","accepted_at","started_at","finished_at","transition_at","stages"],"additionalProperties":false},"Event":{"type":"object","properties":{"schema_version":{"const":1},"config_entry_id":{"type":"string","minLength":1,"maxLength":128},"epoch":{"type":"string","pattern":"^[0-9a-f]{32}$"},"observation_revision":{"type":"integer","minimum":0,"maximum":9007199254740991},"sequence":{"type":"integer","minimum":1,"maximum":9007199254740991},"event_id":{"type":"string","pattern":"^[0-9a-f]{32}:[1-9][0-9]{0,15}$"},"kind":{"enum":["accepted","running","stopping","completed","stopped","incomplete","failed","stop_unconfirmed","ph_low","ec_high","ph_high"]},"reason":{"enum":["circulation_lost","condition_not_met","delay_pending","dependency_not_started","dose_budget_exhausted","ec_danger","ec_high","ec_timeout","emergency_stop","entry_inactive","flow_timeout","level_unsafe","no_actual_start","none","operation_failed","output_already_owned","output_identity_invalid","output_not_off","output_unbound","output_unexpected","ph_danger","ph_high","ph_low","ph_timeout","refill_timeout","resource_chemical","restart_output_not_off","revoked","sample_invalid","sample_timeout","source_invalid","stage_skipped","start_cancelled","start_unconfirmed","stop_unconfirmed","weekday"]},"occurred_at":{"type":"string","format":"date-time","pattern":"^\\d{4}-\\d{2}-\\d{2}T.*\\+00:00$"},"run":{"anyOf":[{"$ref":"#/$defs/Run"},{"type":"null"}]}},"required":["schema_version","config_entry_id","epoch","observation_revision","sequence","event_id","kind","reason","occurred_at","run"],"additionalProperties":false},"ResultDTO":{"type":"object","properties":{"schema_version":{"const":1},"config_entry_id":{"type":"string","minLength":1,"maxLength":128},"epoch":{"type":"string","pattern":"^[0-9a-f]{32}$"},"observation_revision":{"type":"integer","minimum":0,"maximum":9007199254740991},"support":{"enum":["supported","unsupported"]},"current_run":{"anyOf":[{"$ref":"#/$defs/Run"},{"type":"null"}]},"last_result":{"anyOf":[{"$ref":"#/$defs/Run"},{"type":"null"}]},"latest_event":{"anyOf":[{"$ref":"#/$defs/Event"},{"type":"null"}]}},"required":["schema_version","config_entry_id","epoch","observation_revision","support","current_run","last_result","latest_event"],"additionalProperties":false},"TargetBinding":{"type":"object","properties":{"entity_id":{"type":"string","pattern":"^notify\\.[a-z0-9_]+$","maxLength":255},"registry_entry_id":{"type":"string","minLength":1,"maxLength":128},"platform":{"type":"string","minLength":1,"maxLength":128},"unique_id":{"type":"string","minLength":1,"maxLength":512},"config_entry_id":{"anyOf":[{"type":"string","minLength":1,"maxLength":128},{"type":"null"}]}},"required":["entity_id","registry_entry_id","platform","unique_id","config_entry_id"],"additionalProperties":false},"NotificationPolicy":{"type":"object","properties":{"enabled":{"type":"boolean"},"provider":{"enum":[null,"persistent_notification","notify_entity"]},"target_binding":{"anyOf":[{"$ref":"#/$defs/TargetBinding"},{"type":"null"}]},"events":{"type":"array","items":{"enum":["start","stop","completed","incomplete","failed","danger","timeout","stop_unconfirmed"]},"minItems":0,"maxItems":8,"uniqueItems":true},"cooldown_seconds":{"type":"integer","minimum":60,"maximum":86400}},"required":["enabled","provider","target_binding","events","cooldown_seconds"],"additionalProperties":false},"PolicyInput":{"type":"object","properties":{"enabled":{"type":"boolean"},"provider":{"enum":[null,"persistent_notification","notify_entity"]},"events":{"type":"array","items":{"enum":["start","stop","completed","incomplete","failed","danger","timeout","stop_unconfirmed"]},"minItems":0,"maxItems":8,"uniqueItems":true},"cooldown_seconds":{"type":"integer","minimum":60,"maximum":86400},"target_entity_id":{"anyOf":[{"type":"string","pattern":"^notify\\.[a-z0-9_]+$","maxLength":255},{"type":"null"}]}},"required":["enabled","provider","events","cooldown_seconds","target_entity_id"],"additionalProperties":false},"Delivery":{"type":"object","properties":{"event_id":{"type":"string","pattern":"^[0-9a-f]{32}:[1-9][0-9]{0,15}$"},"kind":{"enum":["accepted","running","stopping","completed","stopped","incomplete","failed","stop_unconfirmed","ph_low","ec_high","ph_high"]},"status":{"enum":["queued","handoff_returned","failed","suppressed","cancelled","timed_out"]},"code":{"anyOf":[{"enum":["provider_unavailable","provider_failed","provider_timeout","queue_full","cooldown","expired","cancelled","revoked","storage_failed"]},{"type":"null"}]},"acknowledged":{"type":"boolean"},"updated_at":{"type":"string","format":"date-time","pattern":"^\\d{4}-\\d{2}-\\d{2}T.*\\+00:00$"}},"required":["event_id","kind","status","code","acknowledged","updated_at"],"additionalProperties":false},"CatalogItem":{"type":"object","properties":{"entity_id":{"type":"string","pattern":"^notify\\.[a-z0-9_]+$","maxLength":255},"label":{"type":"string","minLength":1,"maxLength":80},"available":{"type":"boolean"}},"required":["entity_id","label","available"],"additionalProperties":false},"NotificationDTO":{"type":"object","properties":{"schema_version":{"const":1},"config_entry_id":{"type":"string","minLength":1,"maxLength":128},"epoch":{"type":"string","pattern":"^[0-9a-f]{32}$"},"revision":{"type":"integer","minimum":0,"maximum":9007199254740991},"policy":{"$ref":"#/$defs/NotificationPolicy"},"availability":{"enum":["disabled","available","unavailable","indeterminate"]},"error":{"anyOf":[{"enum":["provider_unavailable","storage_failed","indeterminate"]},{"type":"null"}]},"catalog":{"type":"array","items":{"$ref":"#/$defs/CatalogItem"},"minItems":0,"maxItems":256,"uniqueItems":true},"deliveries":{"type":"array","items":{"$ref":"#/$defs/Delivery"},"minItems":0,"maxItems":32,"uniqueItems":true}},"required":["schema_version","config_entry_id","epoch","revision","policy","availability","error","catalog","deliveries"],"additionalProperties":false}};
+  const P4C_EVENTS=["start", "stop", "completed", "incomplete", "failed", "danger", "timeout", "stop_unconfirmed"];
+  const P4C_ERRORS=["unauthorized", "entry_not_loaded", "settings_schema_mismatch", "invalid_notification_policy", "invalid_provider", "notification_conflict", "notification_not_found", "storage_failed", "indeterminate"];
+  const p4cDate = v => {
+    const m=typeof v==='string'&&v.match(/^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)(?:\.\d{1,6})?\+00:00$/);
+    return !!(m&&+m[2]>=1&&+m[2]<=12&&+m[3]>=1&&+m[3]<=new Date(Date.UTC(+m[1],+m[2],0)).getUTCDate()&&+m[4]<24&&+m[5]<60&&+m[6]<60&&Number.isFinite(Date.parse(v)));
+  };
+  const p4cSafe = v => !/[\u0000-\u001f\u007f-\u009f؜‎‏‪-‮⁦-⁩]/u.test(v)&&Array.from(v).every(c=>{const n=c.codePointAt(0);return n<0xd800||n>0xdfff;});
+  const p4cCheck=(s,v)=>{
+    if(s.$ref)return p4cCheck(P4C_DEFS[s.$ref.split('/').at(-1)],v);
+    if(s.anyOf)return s.anyOf.some(x=>p4cCheck(x,v));
+    if(Object.hasOwn(s,'const')&&v!==s.const)return false;
+    if(s.enum&&!s.enum.includes(v))return false;
+    if(s.type==='null')return v===null;
+    if(s.type==='boolean')return typeof v==='boolean';
+    if(s.type==='integer')return Number.isSafeInteger(v)&&v>=s.minimum&&v<=s.maximum;
+    if(s.type==='string')return typeof v==='string'&&p4cSafe(v)&&(s.minLength===undefined||Array.from(v).length>=s.minLength)&&(s.maxLength===undefined||Array.from(v).length<=s.maxLength)&&(!s.pattern||new RegExp(s.pattern).test(v))&&(s.format!=='date-time'||p4cDate(v));
+    if(s.type==='array')return Array.isArray(v)&&v.length>=s.minItems&&v.length<=s.maxItems&&(!s.uniqueItems||new Set(v.map(x=>JSON.stringify(x))).size===v.length)&&v.every(x=>p4cCheck(s.items,x));
+    if(s.type==='object')return exact(v,s.required)&&s.required.every(k=>p4cCheck(s.properties[k],v[k]));
+    return true;
+  };
+  const p4cValid=(name,v)=>p4cCheck(P4C_DEFS[name],v);
+  const p4cPolicy=(p,input=false)=>{
+    const target=input?p.target_entity_id:p.target_binding;
+    return (!p.enabled||(p.provider!==null&&p.events.length>0))&&(p.provider==='notify_entity'?target!==null:target===null);
+  };
   const STAGES = ['refill','nutrient','acid','mix'], DAYS = ['mon','tue','wed','thu','fri','sat','sun'];
   const exact = (obj,keys) => obj && typeof obj === 'object' && !Array.isArray(obj) && Object.keys(obj).length === keys.length && keys.every(k=>Object.hasOwn(obj,k));
   const number = v => typeof v === 'number' && Number.isFinite(v);
@@ -297,6 +324,94 @@
       }catch(error){if(current())this.recipeNotice=error?.code==='recipe_conflict'?'配方版本衝突；草稿保留，請明確重新整理':'無法完成配方操作；草稿保留，請重新整理後再試';}
       finally{if(this.recipeFlights.get(entry)===op)this.recipeFlights.delete(entry);if(this.recipeOperation===op){if(!current())this.recipeNotice='連線已變更；草稿保留，請明確重新整理';this.recipeOperation=null;this.renderRecipes();}}
     }
+    resultDTO(d) {
+      if(!p4cValid('ResultDTO',d))return false;
+      const terminal=r=>['completed','stopped','incomplete','failed'].includes(r.state);
+      const run=r=>!r||(r.epoch===d.epoch&&terminal(r)===(r.closure==='confirmed'&&r.finished_at!==null)&&(!terminal(r)?r.finished_at===null:true));
+      if(!run(d.current_run)||!run(d.last_result)||(d.current_run&&terminal(d.current_run))||(d.last_result&&!terminal(d.last_result)))return false;
+      const e=d.latest_event;if(e){if(e.config_entry_id!==d.config_entry_id||e.epoch!==d.epoch||e.event_id!==`${e.epoch}:${e.sequence}`||e.observation_revision>d.observation_revision||!run(e.run))return false;if(!e.run&&!['ph_low','ph_high','ec_high'].includes(e.kind))return false;if(e.run&&['accepted','running','stopping','completed','stopped','incomplete','failed'].includes(e.kind)&&e.run.state!==e.kind)return false;}
+      return d.support!=='unsupported'||[d.current_run,d.last_result,e].every(v=>v===null);
+    }
+    resultNative() {
+      const s=this._hass?.states?.[this.config?.result_entity];if(!s?.attributes)return null;
+      const d=Object.fromEntries(Object.entries(s.attributes).filter(([k])=>!HA_METADATA.includes(k)));
+      if(!this.resultDTO(d)||s.state!==(d.support==='unsupported'?'unsupported':(d.current_run??d.last_result)?.state??'idle'))return null;
+      if(this.config.entity&&this.status()?.attributes.settings_target?.config_entry_id!==d.config_entry_id)return null;
+      return d;
+    }
+    notificationDTO(d,entry,epoch) {
+      if(!p4cValid('NotificationDTO',d)||d.config_entry_id!==entry||d.epoch!==epoch||!p4cPolicy(d.policy))return false;
+      if(new Set(d.catalog.map(x=>x.entity_id)).size!==d.catalog.length||new Set(d.deliveries.map(x=>x.event_id)).size!==d.deliveries.length)return false;
+      if(!d.catalog.every(x=>x.label===x.label.normalize('NFC')))return false;
+      return d.deliveries.every(x=>{const [e,n]=x.event_id.split(':');return e===epoch&&Number.isSafeInteger(Number(n))&&Number(n)>0;});
+    }
+    initResult() {
+      if(this.resultPanel)return;
+      this.notificationFlights=new Map();this.notificationOwner={};
+      this.resultPanel=make('details');this.resultPanel.dataset.resultPanel='';this.resultPanel.append(make('summary','本輪結果（唯讀）'));
+      this.resultStatus=make('p');this.resultStatus.dataset.resultStatus='';this.resultRows=make('section');this.resultPanel.append(this.resultStatus,this.resultRows,make('p','已受理不代表完成；completed 與品質合格／灌溉許可分離。許可唯一權威仍為 quality_v1。'));
+      this.notificationPanel=make('details');this.notificationPanel.dataset.notificationPanel='';this.notificationPanel.append(make('summary','通知管理（admin 私有）'));
+      this.notificationForm=make('section');this.notificationPanel.append(this.notificationForm);this.notificationInputs={};
+      const add=(k,label,type,options=[])=>{const row=make('label',label),i=make(type==='select'?'select':'input');i.dataset['notification'+k[0].toUpperCase()+k.slice(1)]='';i.setAttribute('aria-label',label);if(type!=='select')i.type=type;else for(const [v,l] of options){const o=make('option',l);o.value=v; i.append(o);}row.append(i);this.notificationForm.append(row);this.notificationInputs[k]=i;i.addEventListener(type==='number'?'input':'change',()=>{this.notificationObserve();this.notificationDirty=true;this.renderResult();});return i;};
+      add('enabled','啟用通知（預設關閉）','checkbox');add('provider','通知 Provider','select',[['','未選取'],['persistent_notification','persistent_notification'],['notify_entity','notify_entity']]);add('target','原生 NotifyEntity（僅私有 catalog）','select',[['','未選取']]);
+      const cooldown=add('cooldown','冷卻秒數（60–86400；工程預設 300）','number');cooldown.min='60';cooldown.max='86400';cooldown.step='1';
+      this.notificationEvents=new Map();for(const k of P4C_EVENTS){const row=make('label',k==='start'?'start（已受理）':k),i=make('input');i.type='checkbox';i.dataset.notificationEvent=k;i.addEventListener('change',()=>{this.notificationObserve();this.notificationDirty=true;this.renderResult();});row.append(i);this.notificationForm.append(row);this.notificationEvents.set(k,i);}
+      this.notificationButtons={};for(const [k,label] of [['get','更新通知狀態'],['save','保存通知設定'],['cancel','取消通知草稿'],['reconcile','重新讀取通知設定']]){const b=make('button',label);b.type='button';b.dataset['notification'+k[0].toUpperCase()+k.slice(1)]='';b.addEventListener('click',()=>{this.notificationObserve();if(k==='cancel'){if(this.notificationData)this.notificationDraft(this.notificationData);this.notificationNotice='已取消；未寫入';this.renderResult();}else this.notificationRequest(k);});this.notificationButtons[k]=b;this.notificationForm.append(b);}
+      this.notificationLedger=make('section');this.notificationLedger.dataset.notificationLedger='';this.notificationMessage=make('p');this.notificationMessage.dataset.notificationMessage='';this.notificationMessage.setAttribute('role','status');this.notificationPanel.append(this.notificationLedger,this.notificationMessage);
+      this.notificationPanel.addEventListener('toggle',()=>{if(this.notificationPanel.open&&!this.notificationData)this.notificationRequest('get');});
+      this.shadowRoot.append(make('style','[data-notification-panel] label{display:block;margin:10px 0}[data-notification-panel] select,[data-notification-panel] input[type=number]{display:block;width:100%;box-sizing:border-box}[data-notification-panel] button{max-width:100%;margin:4px}[data-notification-panel] [hidden]{display:none}'));
+    }
+    notificationPurge() {
+      this.notificationOwner={};this.notificationDenied=false;this.notificationUnknown=false;this.notificationData=null;this.notificationBaseline=null;this.notificationDirty=false;this.notificationOperation=null;this.notificationNotice='';
+      if(!this.notificationInputs)return;for(const i of Object.values(this.notificationInputs)){i.value='';i.checked=false;}this.notificationInputs.target.replaceChildren(make('option','未選取'));this.notificationInputs.target.firstChild.value='';for(const i of this.notificationEvents.values())i.checked=false;this.notificationLedger.replaceChildren();
+    }
+    notificationObserve() {
+      const u=this._hass?.user,n=this.resultNative(),ws=this._hass?.callWS,c=this.config?.result_entity&&this.isConnected?this._hass?.connection:undefined;
+      const key=JSON.stringify([typeof u?.id==='string'?u.id:null,u?.is_admin===true,u?.is_active!==false,u?.system_generated===true||u?.systemGenerated===true,this.config?.entity,this.config?.result_entity,n?.config_entry_id,n?.epoch,n?.support,c?.connected!==false,this.isConnected]);
+      if(this.notificationKey!==key||this.notificationWS!==ws||this.notificationConnection!==c){this.notificationPurge();this.notificationKey=key;this.notificationWS=ws;if(this.notificationConnection!==c){if(this.notificationConnection?.removeEventListener){this.notificationConnection.removeEventListener('disconnected',this.notificationDisconnect);this.notificationConnection.removeEventListener('ready',this.notificationReady);}this.notificationConnection=c;this.notificationDisconnect=()=>{this.notificationOffline=true;this.notificationPurge();this.renderResult();};this.notificationReady=()=>{this.notificationOffline=false;this.notificationPurge();this.renderResult();};if(c?.addEventListener){c.addEventListener('disconnected',this.notificationDisconnect);c.addEventListener('ready',this.notificationReady);}}}
+    }
+    notificationAllowed() {
+      const u=this._hass?.user,n=this.resultNative();return !!(!this.notificationDenied&&n?.support==='supported'&&typeof u?.id==='string'&&u.id.trim()&&u.is_admin===true&&u.is_active!==false&&u.system_generated!==true&&u.systemGenerated!==true&&this.isConnected&&!this.notificationOffline&&this._hass?.connection?.connected!==false&&typeof this._hass?.callWS==='function'&&this._hass?.services?.uninus_nutriculture?.get_result_v1);
+    }
+    notificationDraft(d) {
+      this.notificationBaseline=structuredClone(d);this.notificationDirty=false;const p=d.policy,i=this.notificationInputs;i.enabled.checked=p.enabled;i.provider.value=p.provider??'';i.cooldown.value=String(p.cooldown_seconds);i.target.replaceChildren();const empty=make('option','未選取');empty.value='';i.target.append(empty);for(const x of d.catalog){const o=make('option',x.label);o.value=x.entity_id;o.disabled=!x.available;i.target.append(o);}i.target.value=p.target_binding?.entity_id??'';for(const [k,i] of this.notificationEvents)i.checked=p.events.includes(k);
+    }
+    notificationPolicyInput() {
+      const i=this.notificationInputs,p={enabled:i.enabled.checked,provider:i.provider.value||null,target_entity_id:i.provider.value==='notify_entity'?(i.target.value||null):null,events:P4C_EVENTS.filter(k=>this.notificationEvents.get(k).checked),cooldown_seconds:i.cooldown.value===''?null:Number(i.cooldown.value)};
+      return p4cValid('PolicyInput',p)&&p4cPolicy(p,true)?p:null;
+    }
+    updateResult() {
+      this.initResult();this.notificationObserve();for(const panel of [this.resultPanel,this.notificationPanel]){if(this.config?.result_entity){if(panel.parentNode!==this.root)this.root.append(panel);}else panel.remove();}this.renderResult();
+    }
+    renderResult() {
+      if(!this.resultPanel)return;this.notificationObserve();const d=this.resultNative(),r=d?.current_run??d?.last_result;
+      text(this.resultStatus,'結果：'+(!this.isConnected||this.notificationOffline||this._hass?.connection?.connected===false?'未知／離線':d?(d.support==='unsupported'?'未支援':r?.state??'idle'):'未知／未支援或格式無效（唯讀）'));
+      this.resultRows.replaceChildren();if(d&&r&&!this.notificationOffline)for(const [k,s] of Object.entries(r.stages))this.resultRows.append(make('p',`${k} · ${s.phase??'—'} · ${s.result??'—'} · ${s.waiting_reason??'—'} · ${s.started_at??'—'} → ${s.settled_at??'—'}`));
+      if(r)this.resultRows.append(make('p',`run ${r.run_id} · ${r.closure} · ${r.reason} · ${r.accepted_at} → ${r.finished_at??'—'}`));
+      const allowed=this.notificationAllowed(),base=this.notificationBaseline,data=this.notificationData,busy=this.notificationFlights.has(d?.config_entry_id);this.notificationForm.hidden=!allowed;
+      for(const i of [...Object.values(this.notificationInputs),...this.notificationEvents.values()])i.disabled=!allowed||busy||!base||(this.notificationUnknown||data?.availability==='indeterminate');
+      this.notificationButtons.get.disabled=!allowed||busy;this.notificationButtons.reconcile.disabled=!allowed||busy||!data;this.notificationButtons.save.disabled=!allowed||busy||!base||(this.notificationUnknown||data?.availability==='indeterminate')||!this.notificationPolicyInput();this.notificationButtons.cancel.disabled=busy||!base;
+      this.notificationLedger.replaceChildren();if(allowed&&data)for(const x of data.deliveries){const row=make('p',`${x.kind==='accepted'?'已受理':x.kind} · ${x.status==='handoff_returned'?'handoff_returned（已交接返回，非送達確認）':x.status==='timed_out'?'timed_out（結果未知）':x.status} · ${x.acknowledged?'已讀':'未讀'} · ${x.code??''}`),b=make('button','標為已讀（不復歸）');b.type='button';b.dataset.notificationAck=x.event_id;b.disabled=busy||x.acknowledged;b.addEventListener('click',()=>this.notificationRequest('ack',x.event_id));row.append(b);this.notificationLedger.append(row);}
+      text(this.notificationMessage,allowed?(this.notificationNotice||'尚未讀取通知設定；不發測試通知'):'唯讀／通知管理未支援或未授權');
+    }
+    async notificationRequest(action,eventId) {
+      this.notificationObserve();const n=this.resultNative();if(!this.notificationAllowed()||this.notificationFlights.has(n.config_entry_id))return;
+      const base=this.notificationBaseline,policy=action==='save'?this.notificationPolicyInput():null;
+      if(action==='save'&&(!base||!policy||(this.notificationUnknown||this.notificationData?.availability==='indeterminate')))return;
+      if(['ack','reconcile'].includes(action)&&!this.notificationData)return;
+      if(action==='ack'&&!this.notificationData.deliveries.some(d=>d.event_id===eventId&&!d.acknowledged))return;
+      const payload={type:'uninus_nutriculture/notification_v1/'+action,config_entry_id:n.config_entry_id};if(action==='save')Object.assign(payload,{expected_epoch:base.epoch,expected_revision:base.revision,policy});if(action==='ack')Object.assign(payload,{expected_epoch:this.notificationData.epoch,event_id:eventId});if(action==='reconcile')payload.expected_epoch=this.notificationData.epoch;
+      const op={owner:this.notificationOwner,entry:n.config_entry_id,epoch:n.epoch,ws:this._hass.callWS,hass:this._hass,connection:this._hass.connection};this.notificationOperation=op;this.notificationFlights.set(op.entry,op);this.notificationNotice='等待後端回覆…';this.renderResult();
+      const current=()=>{this.notificationObserve();return this.notificationAllowed()&&this.notificationOwner===op.owner&&this.notificationOperation===op&&this._hass.callWS===op.ws&&this._hass.connection===op.connection&&this.resultNative()?.config_entry_id===op.entry&&this.resultNative()?.epoch===op.epoch;};
+      try{let dto=await op.ws.call(op.hass,payload);if(!current())return;if(!this.notificationDTO(dto,op.entry,op.epoch))throw {code:'invalid_response'};
+        if(action==='save'){const input=p=>({enabled:p.enabled,provider:p.provider,events:p.events,cooldown_seconds:p.cooldown_seconds,target_entity_id:p.target_binding?.entity_id??null});if(dto.revision!==base.revision+1||!sameValue(input(dto.policy),policy)||dto.availability==='indeterminate')throw {code:dto.availability==='indeterminate'?'indeterminate':'invalid_response'};
+          const saved=dto;dto=await op.ws.call(op.hass,{type:'uninus_nutriculture/notification_v1/get',config_entry_id:op.entry});if(!current())return;if(!this.notificationDTO(dto,op.entry,op.epoch)||dto.revision!==saved.revision||!sameValue(dto.policy,saved.policy)||dto.availability==='indeterminate')throw {code:'indeterminate'};
+        }
+        if(action==='ack'&&!dto.deliveries.some(d=>d.event_id===eventId&&d.acknowledged))throw {code:'invalid_response'};if(action==='reconcile')this.notificationUnknown=dto.availability==='indeterminate';this.notificationData=structuredClone(dto);if(action==='save'||action==='reconcile'||!this.notificationDirty)this.notificationDraft(dto);this.notificationNotice=dto.availability==='indeterminate'?'indeterminate：保存結果未知；請明確重新讀取通知設定':action==='save'?'通知設定已保存並讀回；未發送通知':action==='ack'?'已標為已讀（不復歸、不重送）':action==='reconcile'?'已明確重新讀取通知設定；未重載控制或補送':'通知狀態已更新（純快取）';
+      }catch(e){if(current()){const code=P4C_ERRORS.includes(e?.code)?e.code:'operation_failed';if(action==='save'&&(code==='indeterminate'||code==='operation_failed'))this.notificationUnknown=true;this.notificationNotice=code==='indeterminate'||action==='save'&&code==='operation_failed'?'indeterminate：保存結果未知；請明確重新讀取通知設定':code==='notification_conflict'?'notification_conflict：草稿保留，請取消後更新通知狀態':`通知操作失敗：${code}；草稿保留`;
+          if(code==='unauthorized'){this.notificationPurge();this.notificationDenied=true;this.notificationNotice='unauthorized';}
+        }}finally{if(this.notificationFlights.get(op.entry)===op)this.notificationFlights.delete(op.entry);if(this.notificationOperation===op)this.notificationOperation=null;this.renderResult();}
+    }
     initQuality() {
       if(this.qualityPanel)return;
       this.qualityFlights=new Map();this.qualityGeneration=0;this.qualityOwner={};this.qualityInputs=new Map();
@@ -412,7 +527,7 @@
     }
     getCardSize() { return this.details.isConnected && this.details.open ? 12 : 4; }
     connectedCallback() { this.update(); }
-    disconnectedCallback() { this.invalidate();if(this.qualityPanel){const n=this.qualityNative();this.qualityBlockedNative=n?`${n.config_entry_id}:${n.epoch}:${n.observation_revision}`:null;this.qualityGeneration++;this.qualityData=null;if(this.qualityConnection?.removeEventListener){this.qualityConnection.removeEventListener('disconnected',this.qualityDisconnect);this.qualityConnection.removeEventListener('ready',this.qualityReady);}this.qualityConnection=null;this.renderQuality();} }
+    disconnectedCallback() { if(this.resultPanel){this.notificationPurge();if(this.notificationConnection?.removeEventListener){this.notificationConnection.removeEventListener('disconnected',this.notificationDisconnect);this.notificationConnection.removeEventListener('ready',this.notificationReady);}this.notificationConnection=null;this.renderResult();}this.invalidate();if(this.qualityPanel){const n=this.qualityNative();this.qualityBlockedNative=n?`${n.config_entry_id}:${n.epoch}:${n.observation_revision}`:null;this.qualityGeneration++;this.qualityData=null;if(this.qualityConnection?.removeEventListener){this.qualityConnection.removeEventListener('disconnected',this.qualityDisconnect);this.qualityConnection.removeEventListener('ready',this.qualityReady);}this.qualityConnection=null;this.renderQuality();} }
     invalidate() {
       this.epoch = (this.epoch ?? 0) + 1;this.planOperation=null;this.previewOperation=null;this.planEpoch=(this.planEpoch??0)+1;this.recipeOperation=null;this.recipeGeneration=(this.recipeGeneration??0)+1;if(this.recipeConfirm)this.recipeConfirm.hidden=true;
       this.groupOperation=null;
@@ -420,7 +535,7 @@
       for (const row of this.controlRows.values()) { row.operation = null; row.error = ''; }
     }
     setConfig(config) {
-      if (!config || (config.entity!==undefined&&(typeof config.entity!=='string'||!/^sensor\.[a-z0-9_]+$/.test(config.entity))) || (config.entity===undefined&&(typeof config.quality_entity!=='string'||!/^sensor\.[a-z0-9_]+$/.test(config.quality_entity))) || (config.quality_entity!==undefined&&(typeof config.quality_entity!=='string'||!/^sensor\.[a-z0-9_]+$/.test(config.quality_entity)))) throw new Error('請選擇狀態 sensor Entity');
+      if (!config || (config.entity!==undefined&&(typeof config.entity!=='string'||!/^sensor\.[a-z0-9_]+$/.test(config.entity))) || (config.entity===undefined&&config.quality_entity===undefined&&config.result_entity===undefined) || (config.result_entity!==undefined&&(typeof config.result_entity!=='string'||!/^sensor\.[a-z0-9_]+$/.test(config.result_entity))) || (config.quality_entity!==undefined&&(typeof config.quality_entity!=='string'||!/^sensor\.[a-z0-9_]+$/.test(config.quality_entity)))) throw new Error('請選擇狀態 sensor Entity');
       this.invalidate();
       if (this.config?.entity !== config.entity) {
         for (const row of this.rows.values()) { row.dirty = false; row.error = ''; }
@@ -755,13 +870,14 @@
       const parameterWarning = compatible && blocked ? `${blocked} 項參數無法儲存；請展開參數檢查 Number Entity。` : '';
       text(this.quality,[warning,parameterWarning,...reasons].filter(Boolean).join('\n'));
       this.quality.classList.toggle('warn',!compatible || status.state !== 'within_range' || blocked>0);
-      this.updateRows(); this.updateControls();this.updateGroup();this.updatePlan();this.updateRecipes();this.updateQuality();
+      this.updateRows(); this.updateControls();this.updateGroup();this.updatePlan();this.updateRecipes();this.updateQuality();this.updateResult();
     }
   }
   class NutricultureEditor extends HTMLElement {
     constructor() {
       super(); this.attachShadow({mode:'open'});
       this.shadowRoot.append(make('style',`${style}label{display:block;margin:12px 0;font-size:14px}select{width:100%;max-width:100%;padding:10px;box-sizing:border-box;color:inherit;background:var(--card-background-color,#fff)}input[type=checkbox]{width:auto;margin-right:8px}`));
+      this.resultInput=make('ha-selector');this.resultInput.selector={entity:{domain:'sensor'}};this.resultInput.dataset.resultEntity='';const rlabel=make('label','結果入口 result_entity（明確選取，不猜 Entity ID）');rlabel.append(this.resultInput);this.shadowRoot.append(rlabel);this.resultInput.addEventListener('value-changed',e=>{if(e.currentTarget!==this.resultInput)return;const value=e.detail?.value;if(value!==''&&value!==null&&value!==undefined&&(typeof value!=='string'||!/^sensor\.[a-z0-9_]+$/.test(value)))return;this.config={...this.config};if(value)this.config.result_entity=value;else delete this.config.result_entity;this.dispatchEvent(new CustomEvent('config-changed',{detail:{config:structuredClone(this.config)},bubbles:true,composed:true}));});
       this.entityInput = make('select'); this.entityInput.name = 'entity';
       this.qualityInput=make('ha-selector');this.qualityInput.selector={entity:{domain:'sensor'}};this.qualityInput.dataset.qualityEntity='';const qlabel=make('label','品質入口 quality_entity（可選；不猜 Entity ID）');qlabel.append(this.qualityInput);this.shadowRoot.append(qlabel);this.qualityInput.addEventListener('value-changed',e=>{if(e.currentTarget!==this.qualityInput)return;const value=e.detail?.value;this.config={...this.config};if(value)this.config.quality_entity=value;else delete this.config.quality_entity;this.dispatchEvent(new CustomEvent('config-changed',{detail:{config:structuredClone(this.config)},bubbles:true,composed:true}));});
       this.titleInput = make('input'); this.titleInput.name = 'title'; this.titleInput.type = 'text';
@@ -778,10 +894,10 @@
       this.config = structuredClone(config ?? {});
       this.titleInput.value = this.config.title ?? '';
       this.showInput.checked = this.config.show_parameters !== false;
-      this.qualityInput.value=this.config.quality_entity??'';
+      this.qualityInput.value=this.config.quality_entity??'';this.resultInput.value=this.config.result_entity??'';
       this.options();
     }
-    set hass(hass) { this._hass = hass;this.qualityInput.hass=hass; this.options(); }
+    set hass(hass) { this._hass = hass;this.qualityInput.hass=hass;this.resultInput.hass=hass; this.options(); }
     options() {
       const ids = Object.keys(this._hass?.states ?? {}).filter(id=>/^sensor\.[a-z0-9_]+$/.test(id));
       if (this.config?.entity && !ids.includes(this.config.entity)) ids.push(this.config.entity);

@@ -1,3 +1,5 @@
+> 現行狀態（2026-11-07）：P4b正式交付與exact-HEAD hosted CI／產物核對已完成。P4c R4來源已通過SPEC及獨立品質兩審，本機完整553 cases／82 modules（144／116／137／156）與真Core／shipped Card join已完成；目前僅準備出版successor，尚未push，未驗新exact-HEAD hosted CI。P4c初始2輪＋explicit Options卸載1輪＋explicit quota1輪＝4/4；P3歷史4輪＋explicit mix1輪＝5/5，皆結案、不重置。完整P4／P5、實機commissioning及HACS實裝未完成，未tag／release／部署。內嵌0.2.0保留既有封裝，不代表功能階段。
+
 # 測試與證據
 
 ## 最終結果
@@ -60,7 +62,7 @@ CHROMIUM_EXECUTABLE='C:/Users/ivanl/AppData/Local/ms-playwright/chromium-1248/ch
 
 Linux venv 路徑為 `.venv/bin/python`。`tests/check.py` 依序執行 native Node `--version`／`--check`／prototype 單元探測與 Python browser suite，傳遞實際 child returncode，並核對註冊／執行 case 數。原始 stdout/stderr 不裁切，保存 child command、hash 與檔案快照。Windows timeout 使用 owned PID 的 `taskkill /T`，不終止其他程序。
 
-Node 18.6.0 的 `node:test` 會輸出原生 **ExperimentalWarning**；原始記錄完整保留。這不是測試失敗，也沒有隱藏 warning。CI 定義使用 Node 22／Python 3.13 與 Chromium；**尚未執行遠端 CI，不能把本機 Node 18／Python 3.14 的結果稱為 CI 版本驗收**。
+以下為早期驗證歷史（非現行P4b／P4c交付狀態）：以下為早期驗證歷史（非現行P4b／P4c交付狀態）：Node 18.6.0 的 `node:test` 會輸出原生 **ExperimentalWarning**；原始記錄完整保留。這不是測試失敗，也沒有隱藏 warning。CI 定義使用 Node 22／Python 3.13 與 Chromium；**尚未執行遠端 CI，不能把本機 Node 18／Python 3.14 的結果稱為 CI 版本驗收**。
 
 ## TDD 原始鏈
 
@@ -89,3 +91,9 @@ Node 18.6.0 的 `node:test` 會輸出原生 **ExperimentalWarning**；原始記�
 - 未連線真實 HA、未檢查其 service 權限／狀態一致性／真實後端、未操作任何硬體。
 - 真正 HA 的 dashboard Add Card 宿主流程、HACS 安裝、私有 GitHub 存取、正式 CI、發布與部署均待授權後另行驗收。
 - 沒有新增任意 backend custom service。群組原子參數儲存明確延期 P3。
+
+## P4c現行portable驗收
+
+Card canonical gate執行unit14及DOM38＋16＋21＋16＝91；P4c既有16 cases正式註冊，沒有wrapper或重複計數。Backend永久suite為553／82；完整gate是R4歷史來源驗收，本出版prep只重跑Card canonical及portable真join，不冒稱再次執行553。
+
+Backend與Card使用明確sibling checkout；`python -B tools/p4c_native_join.py --output <owned-output>` 後執行 `python -B tools/p4c_native_verify.py --output <owned-output>`。可用`--card-repo`指定Card；`P4C_CARD_PYTHON`指定browser SDK，預設當前Python。Chromium可由Playwright安裝或`CHROMIUM_EXECUTABLE`明確指定。只用loopback假硬體；不讀現場auth。CI pins保持Ubuntu24.04／Backend Python3.14／Card Python3.13／Node22，本機Node18.6非hosted驗收。
