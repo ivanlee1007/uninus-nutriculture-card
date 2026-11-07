@@ -20,6 +20,18 @@ jobs:
           python-version: '3.13'
       - run: python -m pip install -r requirements-test.txt
       - run: python -m playwright install --with-deps chromium
+      - name: Export installed Chromium executable
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          from playwright.sync_api import sync_playwright
+          with sync_playwright() as p:
+              executable = Path(os.environ.get('CHROMIUM_EXECUTABLE') or p.chromium.executable_path)
+              assert executable.is_file(), executable
+              with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as env:
+                  env.write(f'CHROMIUM_EXECUTABLE={executable}\n')
+          PY
       - run: npm test
       - name: Verify all activated canonical Card suites
         run: |
