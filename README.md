@@ -1,4 +1,4 @@
-> 現行狀態（2026-11-07）：P4b正式交付與exact-HEAD hosted CI／產物核對已完成。P4c R4來源已通過SPEC及獨立品質兩審，本機完整553 cases／82 modules（144／116／137／156）與真Core／shipped Card join已完成；目前僅準備出版successor，尚未push，未驗新exact-HEAD hosted CI。P4c初始2輪＋explicit Options卸載1輪＋explicit quota1輪＝4/4；P3歷史4輪＋explicit mix1輪＝5/5，皆結案、不重置。完整P4／P5、實機commissioning及HACS實裝未完成，未tag／release／部署。內嵌0.2.0保留既有封裝，不代表功能階段。
+> 現行來源狀態（2026-11-08）：P1–P3、P4a／P4b／P4c軟體來源及對應精確HEAD hosted CI已交付。本版P5a四階段視覺工作台／手機鍵盤已實作，修正後完整SPEC與品質兩審均批准，Q-01已關閉；Preview／Apply／Options／Store與fresh SDK隔離驗收已通過。P5a joint-review repair 1/1已用，P4c 4/4及P3 5/5結案不重置。本提交仍須以其精確HEAD hosted CI與遠端產物完成來源交付核驗；不得將本機或來源審查當成hosted CI／完整P5／實機／HACS驗收。完整P5十二項後續範圍保留，未tag／release／部署。
 
 
 > 導航優先序：FUNCTIONAL_PARITY_REVIEW.md是舊commit的歷史F/D盤點，不代表目前沒有控制能力或所有D/R仍未決；不改寫其原文。P3C_FLOW_CONTRACT.md頂部提案語句屬來源歷史，現行以其§7已採納補充及本輪交付狀態為準，不再次凍結或重審。
@@ -6,16 +6,16 @@
 
 ## 目前開發狀態與完整目標
 
-**P3b 加酸／獨立攪拌／S4：來源已接通並完成兩審；P3c 編排來源已接通並完成兩審。**
+**P1–P3、P4a／P4b／P4c軟體來源已交付；P5a視覺工作台／手機鍵盤來源與兩審已完成，精確HEAD CI及遠端交付核驗另列。**
 
-P3a 工程來源已交付，兩審與功能來源 CI 已完成，見 [P3A_PUBLICATION.md](docs/P3A_PUBLICATION.md)。本倉 P3b 加酸、獨立攪拌與 S4/schema4 已接通唯一後端並完成獨立規格及品質兩審；已審來源的 295 項 native 假硬體測試不代表真 HA／HACS／實機驗收。P3c 四階段可編順序／合法重疊／相對延遲與條件／星期及七日有效流程預覽已接通並完成兩審，完整 P3 的 Issue #3 保持 OPEN；本文件不更新遠端 Issue。P3b 來源交付不必等待完整 P3。P3b 遠端 CI 只以最終 commit 的實際 Actions 為準，不以本機 gate 代替；沒有內建 scheduler 或獨立 stage_link，未建立 tag/release 或部署。
+P3a 工程來源已交付，兩審與功能來源 CI 已完成，見 [P3A_PUBLICATION.md](docs/P3A_PUBLICATION.md)。本倉 P3b 加酸、獨立攪拌與 S4/schema4 已接通唯一後端並完成獨立規格及品質兩審；已審來源的 295 項 native 假硬體測試不代表真 HA／HACS／實機驗收。P3c 四階段可編順序／合法重疊／相對延遲與條件／星期及七日有效流程預覽已接通並完成兩審，P3軟體已交付而實機範圍分開；本文件不更新或重述遠端Issue即時狀態。P3b 來源交付不必等待完整 P3。P3b 遠端 CI 只以最終 commit 的實際 Actions 為準，不以本機 gate 代替；沒有內建 scheduler 或獨立 stage_link，未建立 tag/release 或部署。
 
 **P3a 加養工程來源已推送，獨立規格／品質與功能來源的遠端 CI 均通過；未建立正式發行或部署實機。** 詳見 [P3A_PUBLICATION.md](docs/P3A_PUBLICATION.md)。
 
 - 本機已接通原生 Options、整組參數／星期 CAS、schema3 Card，以及必要循環→加養脈衝→中點停泵→混合→新樣本穩定確認。設定保存不致動；原生 Switch 與外部 `start_flow` 共用後端。
 - 隔離原生回歸、實際 Card 的設定與加養跨層已執行；都是假硬體，不是原 HA／HACS／實機驗收。精確來源與剩餘關卡記錄在後端工作樹 `docs/P3A_LOCAL_CHECKPOINT.json` 與 `docs/P3A_REVIEW_CANDIDATE.md`（P3a 來源交付範圍以 P3A_PUBLICATION.md 為準）。
 - **P3b 加酸與獨立攪拌已接通；P3c 四階段可編順序／合法重疊／相對延遲與條件／星期及七日真正預覽亦已提供。** P3a 只是開發順序，不代表整個 P3，也不能把核心編排延至 P5。
-- P4a配方已交付；P4b品質/完成/許可已實作並兩審及本機隔離驗證。舊S1–S5 `ready_for_irrigation` 固定false，新quality_v1與唯讀permit有效時可True；P4c通知/外部結果R4來源已兩審及本機完整gate，尚未出版。沒有內建排程器、獨立 stage_link 或瀏覽器關泵計時器。
+- P4a配方已交付；P4b品質/完成/許可已實作並兩審及本機隔離驗證。舊S1–S5 `ready_for_irrigation` 固定false，新quality_v1與唯讀permit有效時可True；P4c通知/外部結果軟體來源與exact-HEAD hosted CI／產物核驗已正式交付。沒有內建排程器、獨立 stage_link 或瀏覽器關泵計時器。
 - 已凍結的工程策略不再反覆要求使用者逐項決定；實際設備保護、最低液位與來源採樣能力仍由每槽 commissioning 明確確認。
 
 目標對齊與有限後續順序見[GOAL_ALIGNMENT.md](docs/GOAL_ALIGNMENT.md)。下方 P2 段落是已發布基線的歷史範圍，不限制本倉 P3a／P3b 已提供的功能；現況以上方交付狀態為準。
@@ -147,7 +147,7 @@ schema1不顯示控制操作；schema2另提供總/補水/整輪Switch與急停/
 
 ## 共同開發規範
 
-[DEVELOPMENT_SPEC.md](docs/DEVELOPMENT_SPEC.md)統整已確認結論、前後端責任、開關/流程/星期/外部排程邊界與決策／工程待辦狀態；已定案不代表已實作，P1仍為影子監測。
+[DEVELOPMENT_SPEC.md](docs/DEVELOPMENT_SPEC.md)統整已確認結論、前後端責任、開關/流程/星期/外部排程邊界與決策／工程待辦狀態；既有版本化控制已交付；P1/shadow相容介面本身仍不控制設備。
 
 控制目標與前台可調安全參數已補入[CONTROL_PARAMETERS.md](docs/CONTROL_PARAMETERS.md)：平均目標停止投藥、危險門檻預設採原HA且可調；D01已定，不阻擋繼續開發。
 
@@ -172,10 +172,14 @@ schema1不顯示控制操作；schema2另提供總/補水/整輪Switch與急停/
 
 ## P4b 現行操作與交付界線
 
-見[P4b原生／Card操作與唯一權威](docs/P4B_OPERATION.md)。P4b source、兩審、出版等價、push與exact-HEAD hosted CI及下載產物核對均已完成；仍不等同HACS或實機驗收。P4c來源兩審／本機gate完成但出版／新HEAD CI未完；P5進階體驗、兩槽皆commissioned與shared-output實機驗收仍pending；Issue #4維持OPEN。修復預算4/4不重置。
+見[P4b原生／Card操作與唯一權威](docs/P4B_OPERATION.md)。P4b source、兩審、出版等價、push與exact-HEAD hosted CI及下載產物核對均已完成；仍不等同HACS或實機驗收。P4c正式來源交付、出版等價、push、新exact-HEAD hosted CI及遠端／下載產物核驗均已完成；P5進階體驗、兩槽皆commissioned與shared-output實機驗收仍pending；本文件不寫入遠端Issue，完整P5仍保留。修復預算4/4不重置。
 
-## P4c 來源已兩審，出版／實機尚未完成
+## P4c 軟體來源已正式交付；實機／HACS分開
 
 - 以 [P4C_RESULT_NOTIFICATION_CONTRACT.md](docs/P4C_RESULT_NOTIFICATION_CONTRACT.md) §8及 [P4C_API_SCHEMA.json](docs/P4C_API_SCHEMA.json)優先：既有整輪trigger→穩定result_v1投影／事件；nativeOptions與Card共用私有通知權威、選native provider／事件／cooldown；default disabled。無scheduler、任意service runner或直接灌溉。
-- P4c R4來源兩審與本機完整gate已完成；本出版prep本身不是APPROVED，尚待出版等價／真Card commit pin／新exact-HEAD hosted CI。P4c 4/4、P3 5/5結案，不重開產品修復。通知失敗／ACK不改安全OFF、fault、quality或permit；Core STOP與普通flow Stop分辨；明確private reconcile，不自動entry reload。
+- P4c R4來源兩審、本機完整gate、出版等價、正式Card commit pin、新exact-HEAD hosted CI及遠端／下載產物核驗均已完成。P4c 4/4、P3 5/5結案，不重開產品修復。通知失敗／ACK不改安全OFF、fault、quality或permit；Core STOP與普通flow Stop分辨；明確private reconcile，不自動entry reload。
 - P5進階視覺、手機／鍵盤、完整歷史／診斷、兩槽各自全流程／跨槽共output commissioning、HACS與實機仍保留；P4c必要idle低pH／高EC唯讀告警G1不延後。原F/D及歷史失敗不回寫。
+
+## P5a 視覺工作台與操作入口
+
+四階段關係按鈕可進入既有規則欄位，保留調序／重疊／延遲／有限條件／星期→七日後端Preview→明確套用→native讀回／重開路徑；見[P5a視覺工作台操作說明](docs/P5A_VISUAL_WORKFLOW.md)。真隔離Core19 requests整合與修正後獨立SPEC→品質兩審已完成；精確HEAD hosted CI與遠端交付核驗另列，不宣稱完整P5或實機完成。草稿示意／Preview不保證物理可行性或arrival；不增加schema、scheduler、raw IO或現場控制。

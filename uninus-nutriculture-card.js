@@ -132,6 +132,9 @@
     input,button{font:inherit;min-width:0;max-width:100%;border-radius:7px;padding:9px 7px;border:1px solid var(--divider-color,#cddce1);color:inherit;background:var(--card-background-color,#fff)}input{width:100%;font-size:14px}button{cursor:pointer;font-size:13px;color:var(--primary-color,#277b86)}button:disabled{cursor:not-allowed;opacity:.5}:focus-visible{outline:2px solid var(--primary-color,#277b86);outline-offset:2px}
     .control{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:9px 0;border-top:1px solid var(--divider-color,#d9e4e7)}.control button{min-width:64px;min-height:40px}.control small{grid-column:1/-1;white-space:pre-line;font-size:12px}.control p,[data-control-status]{white-space:pre-line}
     :host{container-type:inline-size}.group-param{grid-template-columns:minmax(0,1fr) minmax(70px,110px)}fieldset{min-width:0;border:1px solid var(--divider-color,#d9e4e7);margin:8px 0}fieldset label{display:inline-flex;align-items:center;gap:4px;margin:4px}fieldset input{width:auto;min-height:24px} [data-group-message]{font-size:12px;white-space:pre-line} [data-group-settings]>button{margin:10px 6px 0 0;min-height:40px}
+    [data-flow-editor]{min-width:0;font-size:14px}[data-flow-editor] nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}[data-plan-stage]{min-width:0;padding:10px;border:1px solid var(--divider-color,#d9e4e7);border-radius:10px;background:var(--secondary-background-color,#edf5f6)}[data-plan-stage] p{margin:8px 0 0;font-size:13px;line-height:1.55}
+    [data-flow-editor] button{min-height:44px;white-space:normal}[data-flow-editor]>button{margin:6px 6px 6px 0}[data-flow-row]{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;padding:10px}[data-flow-row] legend{font-weight:600}[data-flow-row] label{display:flex;flex-direction:column;align-items:stretch;min-width:0;margin:0;gap:4px}[data-flow-row] input:not([type=checkbox]),[data-flow-row] select{width:100%;min-width:0;max-width:100%;min-height:44px;font:inherit;color:inherit;background:var(--card-background-color,#fff);border:1px solid var(--divider-color,#cddce1);border-radius:7px}[data-flow-row] label:has([type=checkbox]){flex-direction:row;align-items:center;min-height:44px;padding:6px;border:1px solid var(--divider-color,#d9e4e7);border-radius:7px;cursor:pointer}[data-flow-row] input[type=checkbox]{width:22px;height:22px;min-height:22px;margin:0 6px 0 0}[data-step-runtime]{grid-column:1/-1;margin:4px 0}[data-preview-day]{border-top:1px solid var(--divider-color,#d9e4e7)}[data-preview-day] p{line-height:1.6}
+    @container(max-width:420px){[data-flow-editor] nav{grid-template-columns:minmax(0,1fr)}}
     @container(max-width:360px){ha-card{padding:12px}.tile strong{font-size:20px}.tile{padding:10px 6px}}
   `;
   class NutricultureCard extends HTMLElement {
@@ -527,9 +530,9 @@
     }
     getCardSize() { return this.details.isConnected && this.details.open ? 12 : 4; }
     connectedCallback() { this.update(); }
-    disconnectedCallback() { if(this.resultPanel){this.notificationPurge();if(this.notificationConnection?.removeEventListener){this.notificationConnection.removeEventListener('disconnected',this.notificationDisconnect);this.notificationConnection.removeEventListener('ready',this.notificationReady);}this.notificationConnection=null;this.renderResult();}this.invalidate();if(this.qualityPanel){const n=this.qualityNative();this.qualityBlockedNative=n?`${n.config_entry_id}:${n.epoch}:${n.observation_revision}`:null;this.qualityGeneration++;this.qualityData=null;if(this.qualityConnection?.removeEventListener){this.qualityConnection.removeEventListener('disconnected',this.qualityDisconnect);this.qualityConnection.removeEventListener('ready',this.qualityReady);}this.qualityConnection=null;this.renderQuality();} }
+    disconnectedCallback() { if(this.planPanel)this.observePlanOwner();if(this.resultPanel){this.notificationPurge();if(this.notificationConnection?.removeEventListener){this.notificationConnection.removeEventListener('disconnected',this.notificationDisconnect);this.notificationConnection.removeEventListener('ready',this.notificationReady);}this.notificationConnection=null;this.renderResult();}this.invalidate();if(this.qualityPanel){const n=this.qualityNative();this.qualityBlockedNative=n?`${n.config_entry_id}:${n.epoch}:${n.observation_revision}`:null;this.qualityGeneration++;this.qualityData=null;if(this.qualityConnection?.removeEventListener){this.qualityConnection.removeEventListener('disconnected',this.qualityDisconnect);this.qualityConnection.removeEventListener('ready',this.qualityReady);}this.qualityConnection=null;this.renderQuality();} }
     invalidate() {
-      this.epoch = (this.epoch ?? 0) + 1;this.planOperation=null;this.previewOperation=null;this.planEpoch=(this.planEpoch??0)+1;this.recipeOperation=null;this.recipeGeneration=(this.recipeGeneration??0)+1;if(this.recipeConfirm)this.recipeConfirm.hidden=true;
+      this.epoch = (this.epoch ?? 0) + 1;this.recipeOperation=null;this.recipeGeneration=(this.recipeGeneration??0)+1;if(this.recipeConfirm)this.recipeConfirm.hidden=true;
       this.groupOperation=null;
       for (const row of this.rows.values()) { row.operation = null; row.pending = false; }
       for (const row of this.controlRows.values()) { row.operation = null; row.error = ''; }
@@ -702,22 +705,51 @@
       } catch(error){if(current()){this.groupOperation=null;this.groupMessageText=`套用失敗（保留草稿）：${error?.message??String(error)}`;}}
       finally {if(this.flights.get(key)===op)this.flights.delete(key);if(current() || this.isConnected)this.update();}
     }
-    planIdentity() {const a=this.status()?.attributes;return JSON.stringify([this.config?.entity,a?.flow_plan_target]);}
+    planIdentity() {return JSON.stringify([this.config?.entity,this.status()?.attributes?.flow_plan_target?.config_entry_id]);}
+    observePlanOwner() {
+      const h=this._hass,u=h?.user,a=this.status()?.attributes,connection=this.isConnected?h?.connection:null,ws=h?.callWS;
+      // Capture primitive authority values: HA may mutate the same user object.
+      const scope=JSON.stringify([this.planIdentity(),typeof u?.id==='string'?u.id:null,u?.is_admin===true,u?.is_active!==false,u?.system_generated===true||u?.systemGenerated===true]);
+      const lifecycle=JSON.stringify([this.isConnected,h?.connection?.connected!==false,a?.epoch??null]);
+      const changed=this.planScope!==scope,transport=this.planWS!==ws||this.planConnection!==connection||this.planLifecycle!==lifecycle;
+      if(changed||transport){
+        this.planOwner={};this.planEpoch=(this.planEpoch??0)+1;this.previewOperation=null;this.previewResults=null;
+        if(changed){this.planDraft=null;this.planOperation=null;this.planDenied=false;this.planNotice='操作身分或目標已變更；舊草稿清除';}
+        else {if(this.planOperation?.settled)this.planOperation=null;this.planNotice='連線已變更；保留原草稿與兩 revision，請明確重試';}
+      }
+      if(this.planConnection!==connection){
+        if(this.planConnection?.removeEventListener){this.planConnection.removeEventListener('disconnected',this.planConnectionChanged);this.planConnection.removeEventListener('ready',this.planConnectionChanged);}
+        if(connection?.addEventListener){this.planConnectionChanged=()=>this.updatePlan();connection.addEventListener('disconnected',this.planConnectionChanged);connection.addEventListener('ready',this.planConnectionChanged);}
+      }
+      this.planScope=scope;this.planLifecycle=lifecycle;this.planConnection=connection;this.planWS=ws;
+    }
+    planResponseOwned(op) {this.observePlanOwner();return this.isConnected&&this._hass?.connection?.connected!==false&&this.planOwner===op.owner&&writable(this.status())&&!this.planDenied;}
+    denyPlan(error) {
+      if(!['unauthorized','not_allowed','forbidden'].includes(error?.code)&&!(error?.code==='home_assistant_error'&&String(error?.message).includes('Unauthorized')))return false;
+      this.planOwner={};this.planDenied=true;this.planDraft=null;this.planOperation=null;this.previewOperation=null;this.previewResults=null;this.planEpoch=(this.planEpoch??0)+1;this.planNotice='流程權限遭拒；草稿與預覽已清除';return true;
+    }
     beginPlan() {
       const a=this.status()?.attributes;
-      if(!writable(this.status())||a.schema_version!==5)return null;
+      this.observePlanOwner();if(this.planDenied||!this.isConnected||this._hass?.connection?.connected===false||this._hass?.user?.is_active===false||!writable(this.status())||a.schema_version!==5)return null;
       if(!this.planDraft)this.planDraft={identity:this.planIdentity(),entry:a.flow_plan_target.config_entry_id,revision:a.settings_revision,planRevision:a.flow_plan_revision,flow_plan:structuredClone(a.flow_plan),allowed_weekdays:structuredClone(a.allowed_weekdays)};
       return this.planDraft;
     }
     editPlan(change) {const d=this.beginPlan();if(!d||this.planOperation)return;change(d);this.planEpoch=(this.planEpoch??0)+1;this.previewOperation=null;this.previewResults=null;this.planNotice='';this.updatePlan();}
     createPlanPanel() {
       this.planPanel=make('section');this.planPanel.dataset.flowEditor='';this.planPanel.append(make('h3','四階段流程 · 下輪生效'),make('p','Enable 使用原生子開關；允許重疊不保證同時啟動，實際資源與安全由後端仲裁。跨午夜由真正 admission 當日決定，不保證完成時間。'));
+      this.planStages=new Map();this.planOverview=make('nav');this.planOverview.setAttribute('aria-label','四階段草稿關係');
+      for(const [stage,label] of [['refill','補水'],['nutrient','加養'],['acid','加酸'],['mix','獨立攪拌']]){
+        const el=make('section');el.dataset.planStage=stage;const button=make('button','編輯'+label);button.type='button';
+        button.addEventListener('click',()=>{const row=this.planRows.get(stage);if(!row.rule.disabled){row.rule.scrollIntoView({block:'center'});row.rule.focus({preventScroll:true});}});
+        const summary=make('p');el.append(button,summary);this.planStages.set(stage,{el,button,summary,label});this.planOverview.append(el);
+      }
+      this.planPanel.append(this.planOverview);
       this.planRows=new Map();this.planBody=make('div');this.planBody.setAttribute('role','table');this.planPanel.append(this.planBody);
       const field=(parent,label,node)=>{const el=make('label',label);el.append(node);parent.append(el);return node;};
       for(const stage of STAGES){
         const el=make('fieldset');el.dataset.flowRow=stage;el.setAttribute('role','row');el.append(make('legend',stage));
         const row={el};
-        for(const [dir,delta] of [['up',-1],['down',1]]){const b=make('button',dir==='up'?'↑ 上移':'↓ 下移');b.type='button';b.dataset.move=dir;b.addEventListener('click',()=>this.editPlan(d=>{const i=d.flow_plan.rows.findIndex(r=>r.stage===stage),j=i+delta;if(j>=0&&j<4)[d.flow_plan.rows[i],d.flow_plan.rows[j]]=[d.flow_plan.rows[j],d.flow_plan.rows[i]];}));el.append(b);row[dir]=b;}
+        for(const [dir,delta] of [['up',-1],['down',1]]){const b=make('button',dir==='up'?'↑ 上移':'↓ 下移');b.type='button';b.dataset.move=dir;b.addEventListener('click',()=>{this.editPlan(d=>{const i=d.flow_plan.rows.findIndex(r=>r.stage===stage),j=i+delta;if(j>=0&&j<4)[d.flow_plan.rows[i],d.flow_plan.rows[j]]=[d.flow_plan.rows[j],d.flow_plan.rows[i]];});(b.disabled?row.rule:b).focus({preventScroll:true});});el.append(b);row[dir]=b;}
         const select=(label,key,options)=>{const s=make('select');s.dataset.flowField=key;for(const v of options){const o=make('option',v||'無條件');o.value=v;s.append(o);}field(el,label,s);return s;};
         row.rule=select('起始規則 ','start_rule',RULES);
         const num=(label,key,min)=>{const n=make('input');n.type='number';n.min=String(min);n.max='86400';n.step='1';n.dataset.flowField=key;field(el,label,n);return n;};
@@ -733,54 +765,60 @@
     }
     updatePlan() {
       if(!this.planPanel)this.createPlanPanel();
+      this.observePlanOwner();
       const a=this.status()?.attributes,usable=a?.schema_version===5&&writable(this.status());
-      if(!usable){this.planPanel.remove();this.planOperation=null;this.previewOperation=null;this.planEpoch=(this.planEpoch??0)+1;return;}
+      if(!usable){this.planPanel.remove();this.planDraft=null;this.planOperation=null;this.previewOperation=null;this.previewResults=null;this.planOwner={};this.planEpoch=(this.planEpoch??0)+1;return;}
       const identity=this.planIdentity();if(this.planDraft&&this.planDraft.identity!==identity){this.planDraft=null;this.planOperation=null;this.previewOperation=null;this.previewResults=null;this.planNotice='目標已改變；舊草稿清除';this.planEpoch=(this.planEpoch??0)+1;}
       if(this.planPanel.parentNode!==this.root)this.root.append(this.planPanel);
+      const property=(node,key,value)=>{if(node[key]!==value)node[key]=value;};
       const op=this.planOperation;
-      if(op?.settled&&op.epoch===this.epoch&&op.identity===identity&&op.draft===this.planDraft&&a.settings_revision===op.response.settings_revision&&a.flow_plan_revision===op.response.flow_plan_revision&&sameValue(a.flow_plan,op.payload.flow_plan)&&sameValue(a.allowed_weekdays,op.payload.allowed_weekdays)){this.planDraft=null;this.planOperation=null;this.planNotice='已套用；同 entry / revision / 全值後端讀回一致';}
-      const d=this.planDraft??a,p=d.flow_plan,w=d.allowed_weekdays,pending=!!this.planOperation,conflict=!!this.planDraft&&(a.settings_revision!==d.revision||a.flow_plan_revision!==d.planRevision);
+      if(op?.settled&&op.owner===this.planOwner&&op.identity===identity&&op.draft===this.planDraft&&a.settings_revision===op.response.settings_revision&&a.flow_plan_revision===op.response.flow_plan_revision&&sameValue(a.flow_plan,op.payload.flow_plan)&&sameValue(a.allowed_weekdays,op.payload.allowed_weekdays)){this.planDraft=null;this.planOperation=null;this.planNotice='已套用；同 entry / revision / 全值後端讀回一致';}
+      const d=this.planDraft??a,p=d.flow_plan,w=d.allowed_weekdays,pending=!!this.planOperation||this.planDenied||this._hass?.connection?.connected===false||this._hass?.user?.is_active===false,conflict=!!this.planDraft&&(a.settings_revision!==d.revision||a.flow_plan_revision!==d.planRevision);
       for(const [i,r] of p.rows.entries()){
         const row=this.planRows.get(r.stage);if(this.planBody.children[i]!==row.el)this.planBody.insertBefore(row.el,this.planBody.children[i]??null);
+        const visual=this.planStages.get(r.stage),previous=p.rows[i-1];if(this.planOverview.children[i]!==visual.el)this.planOverview.insertBefore(visual.el,this.planOverview.children[i]??null);
+        const anchor=r.start_rule==='flow_start'?'整輪開始':`${previous?this.planStages.get(previous.stage).label:'無上一階段（無效）'}${r.start_rule==='after_previous_started'?'開始':'結束'}`;
+        text(visual.summary,`草稿關係 ${i+1} · ${visual.label} ← ${anchor} + ${r.delay_seconds??'—'} 秒 · 等待 ${r.wait_timeout_seconds??'—'} 秒 · ${r.condition?`${r.condition.source} ${r.condition.operator} ${r.condition.value??'—'}`:'無條件'} · 星期 ${w[r.stage].join(' / ')||'空集合'} · ${this.planDraft?'未保存':'後端設定'}；不是後端可行性／物理啟動預測`);
+        property(visual.button,'disabled',pending);
         const values=[[row.rule,r.start_rule],[row.delay,r.delay_seconds],[row.wait,r.wait_timeout_seconds],[row.source,r.condition?.source??''],[row.operator,r.condition?.operator??'gte'],[row.value,r.condition?.value??'']];
-        for(const [n,v] of values){if(n.value!==String(v??''))n.value=String(v??'');n.disabled=pending;}
-        for(const [day,n] of row.days){n.checked=w[r.stage].includes(day);n.disabled=pending;}
-        row.up.disabled=pending||i===0;row.down.disabled=pending||i===3;
-        const runtime=a.step_runtime[r.stage];text(row.runtime,`own phase: ${runtime.phase??'—'} · result: ${runtime.result??'—'} · wait: ${runtime.waiting_reason??'—'} · started: ${runtime.started_at??'—'} · settled: ${runtime.settled_at??'—'}`);
+        for(const [n,v] of values){if(n.value!==String(v??''))n.value=String(v??'');property(n,'disabled',pending);}
+        for(const [day,n] of row.days){property(n,'checked',w[r.stage].includes(day));property(n,'disabled',pending);}
+        property(row.up,'disabled',pending||i===0);property(row.down,'disabled',pending||i===3);
+        const runtime=a.step_runtime[r.stage];text(row.runtime,`實際運行 · own phase: ${runtime.phase??'—'} · result: ${runtime.result??'—'} · wait: ${runtime.waiting_reason??'—'} · started: ${runtime.started_at??'—'} · settled: ${runtime.settled_at??'—'}`);
       }
-      if(this.runTimeout.value!==String(p.run_timeout_seconds??''))this.runTimeout.value=String(p.run_timeout_seconds??'');this.runTimeout.disabled=pending;
+      if(this.runTimeout.value!==String(p.run_timeout_seconds??''))this.runTimeout.value=String(p.run_timeout_seconds??'');property(this.runTimeout,'disabled',pending);
       const valid=validPlan(p)&&weekdays(w),locked=this.flights.has('plan:'+a.flow_plan_target.config_entry_id);
-      this.planApply.disabled=!this.isConnected||!this.planDraft||!valid||conflict||pending||locked;
-      this.planPreview.disabled=!this.isConnected||!valid||conflict||pending||!!this.previewOperation;
+      property(this.planApply,'disabled',!this.isConnected||!this.planDraft||!valid||conflict||pending||locked);
+      property(this.planPreview,'disabled',!this.isConnected||!valid||conflict||pending||!!this.previewOperation);
       text(this.planMessage,!valid?'流程無效：首列必須 flow_start，重排不會暗改規則；請檢查整秒期限與條件量程':conflict?'settings_conflict：保留草稿與原兩 revision；Cancel 才載入新版':this.planNotice??'尚未保存；預覽會送出未保存星期與計畫');
       if(this.previewRendered!==this.previewResults){this.previewRendered=this.previewResults;this.previewView.replaceChildren();for(const result of this.previewResults??[]){const day=make('section');day.dataset.previewDay=result.weekday;day.append(make('h4',result.weekday));for(const r of result.rows)day.append(make('p',`${r.stage} · ${r.eligibility} · 最早下界 ${r.earliest_offset_seconds===null?'未知':r.earliest_offset_seconds+'s'} · ${r.uncertainties.join(' / ')}`));day.append(make('p',result.warnings.join(' / ')));this.previewView.append(day);}}
       text(this.unsupported,`物理輸出（非 Enable）：${Object.entries(a.output_states).map(([k,v])=>k+' '+v).join(' / ')}\nIRR ready: false · 等待期間整輪保持 ON；unknown / fault 不代表完成。`);
     }
     planPayload(d) {return {config_entry_id:d.entry,expected_revision:d.revision,expected_flow_plan_revision:d.planRevision,flow_plan:structuredClone(d.flow_plan),allowed_weekdays:structuredClone(d.allowed_weekdays)};}
-    async flowRequest(service,payload) {
+    async flowRequest(service,payload,op) {
       if(!this._hass?.callWS)throw new Error('需要支援 service response 的 HA transport');
-      const result=await this._hass.callWS({type:'call_service',domain:'uninus_nutriculture',service,service_data:payload,return_response:true});
+      const result=await (op?.ws??this._hass.callWS).call(op?.hass??this._hass,{type:'call_service',domain:'uninus_nutriculture',service,service_data:payload,return_response:true});
       return result?.response;
     }
     async applyPlan() {
       this.updatePlan();if(this.planApply.disabled)return;
-      const d=this.planDraft,a=this.status().attributes,key='plan:'+d.entry,op={epoch:this.epoch,identity:this.planIdentity(),draft:d,payload:this.planPayload(d)};
+      const d=this.planDraft,a=this.status().attributes,key='plan:'+d.entry,op={owner:this.planOwner,ws:this._hass.callWS,hass:this._hass,identity:this.planIdentity(),draft:d,payload:this.planPayload(d)};
       this.flights.set(key,op);this.planOperation=op;this.planNotice='保存中；等待服務及嚴格讀回';this.updatePlan();
-      const current=()=>this.isConnected&&this.epoch===op.epoch&&this.planOperation===op&&this.planDraft===d&&this.planIdentity()===op.identity&&writable(this.status());
-      try{const r=await this.flowRequest(a.flow_plan_target.service,op.payload);if(!current())return;
+      const current=()=>this.planResponseOwned(op)&&this.planOperation===op&&this.planDraft===d&&this.planIdentity()===op.identity;
+      try{const r=await this.flowRequest(a.flow_plan_target.service,op.payload,op);if(!current())return;
         if(!exact(r,['applied','settings_revision','flow_plan_revision','flow_plan','allowed_weekdays'])||typeof r.applied!=='boolean'||!revision(r.settings_revision)||!revision(r.flow_plan_revision)||r.settings_revision<d.revision||r.flow_plan_revision<d.planRevision||!validPlan(r.flow_plan)||!weekdays(r.allowed_weekdays)||!sameValue(r.flow_plan,d.flow_plan)||!sameValue(r.allowed_weekdays,d.allowed_weekdays))throw new Error('invalid_plan_response');op.response=r;op.settled=true;this.planNotice='已送出；等待同 revision 全值讀回';
-      }catch(e){if(current()){this.planOperation=null;this.planNotice='保存失敗／衝突：保留草稿';}}
-      finally{if(this.flights.get(key)===op)this.flights.delete(key);if(current()||this.isConnected)this.updatePlan();}
+      }catch(e){if(current()&&!this.denyPlan(e)){this.planOperation=null;this.planNotice='保存失敗／衝突：保留草稿';}}
+      finally{if(this.flights.get(key)===op)this.flights.delete(key);if(this.planOperation===op&&!current()){this.planOperation=null;this.planNotice='舊連線操作已結束；保留草稿，請明確重試';}if(this.isConnected)this.updatePlan();}
     }
     async previewPlan() {
       this.updatePlan();if(this.planPreview.disabled)return;
-      const d=this.beginPlan(),a=this.status().attributes,op={epoch:this.epoch,draft:d,draftEpoch:this.planEpoch,identity:this.planIdentity()};this.previewOperation=op;this.updatePlan();
-      const current=()=>this.isConnected&&this.epoch===op.epoch&&this.planEpoch===op.draftEpoch&&this.previewOperation===op&&this.planDraft===d&&this.planIdentity()===op.identity&&writable(this.status())&&this.status().attributes.settings_revision===d.revision&&this.status().attributes.flow_plan_revision===d.planRevision;
-      try{const payload=this.planPayload(d),results=await Promise.all(DAYS.map(async weekday=>{const r=await this.flowRequest(a.flow_plan_target.preview_service,{...payload,weekday});
+      const d=this.beginPlan(),a=this.status().attributes,op={owner:this.planOwner,ws:this._hass.callWS,hass:this._hass,draft:d,draftEpoch:this.planEpoch,identity:this.planIdentity()};this.previewOperation=op;this.updatePlan();
+      const current=()=>this.planResponseOwned(op)&&this.planEpoch===op.draftEpoch&&this.previewOperation===op&&this.planDraft===d&&this.planIdentity()===op.identity&&writable(this.status())&&this.status().attributes.settings_revision===d.revision&&this.status().attributes.flow_plan_revision===d.planRevision;
+      try{const payload=this.planPayload(d),results=await Promise.all(DAYS.map(async weekday=>{const r=await this.flowRequest(a.flow_plan_target.preview_service,{...payload,weekday},op);
         if(!exact(r,['settings_revision','flow_plan_revision','weekday','rows','warnings'])||r.settings_revision!==d.revision||r.flow_plan_revision!==d.planRevision||r.weekday!==weekday||!Array.isArray(r.rows)||r.rows.length!==4||!Array.isArray(r.warnings)||!r.warnings.every(v=>typeof v==='string'&&v.length<=256)||!r.rows.every((row,i)=>exact(row,['stage','eligibility','earliest_offset_seconds','uncertainties'])&&row.stage===payload.flow_plan.rows[i].stage&&['eligible','skipped_disabled','skipped_weekday','blocked_dependency','blocked_safety'].includes(row.eligibility)&&(row.earliest_offset_seconds===null||(number(row.earliest_offset_seconds)&&row.earliest_offset_seconds>=0))&&Array.isArray(row.uncertainties)&&row.uncertainties.every(v=>typeof v==='string'&&v.length<=256)))throw new Error('invalid_preview_response');return r;}));
         if(current()){this.previewResults=results;this.planNotice='七日後端預覽；僅最早下界，真正 admission 安全與跨日以後端為準';}
-      }catch(e){if(current())this.planNotice='預覽失敗／衝突；保留草稿';}
-      finally{if(current()){this.previewOperation=null;this.updatePlan();}}
+      }catch(e){if(current()&&!this.denyPlan(e))this.planNotice='預覽失敗／衝突；保留草稿';}
+      finally{if(this.previewOperation===op)this.previewOperation=null;if(this.isConnected)this.updatePlan();}
     }
     controlTarget(row) {
       const status = this.status();

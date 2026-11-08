@@ -57,6 +57,225 @@ class BrowserTests(unittest.TestCase):
         states=json.loads(subprocess.check_output(['node','-e',"console.log(JSON.stringify(require('./tests/p3c_fixture.cjs')()))"],cwd=ROOT))
         self.page.evaluate("states=>{card.hass={states,callService:(...args)=>{calls.push(args);return Promise.resolve()},callWS:m=>{calls.push([m.domain,m.service,m.service_data]);return Promise.resolve({response:{applied:true,settings_revision:m.service_data.expected_revision+1,flow_plan_revision:m.service_data.expected_flow_plan_revision+1,flow_plan:m.service_data.flow_plan,allowed_weekdays:m.service_data.allowed_weekdays}})}}}",states)
 
+    def test_p5a_visual_stage_to_editor_and_payload(self):
+        self.flow_fixture()
+        p=self.page
+        nav=p.locator('[data-plan-stage="acid"]').get_by_role('button',name='編輯加酸',exact=True)
+        self.assertEqual(nav.count(),1,'must expose an operable visual stage entry')
+        nav.click()
+        self.assertTrue(p.evaluate("card.shadowRoot.activeElement===card.planRows.get('acid').rule"))
+        self.assertEqual(p.evaluate('card.shadowRoot.activeElement.dataset.flowField'),'start_rule')
+        row=p.locator('[data-flow-row="acid"]')
+        row.locator('[data-flow-field="start_rule"]').select_option('after_previous_started')
+        row.locator('[data-flow-field="delay_seconds"]').fill('12')
+        row.locator('[data-flow-field="wait_timeout_seconds"]').fill('45')
+        row.locator('[data-flow-field="source"]').select_option('level')
+        row.locator('[data-flow-field="operator"]').select_option('gte')
+        row.locator('[data-flow-field="value"]').fill('0.5')
+        p.locator('[data-flow-row="mix"] [data-move="up"]').click()
+        p.locator('[data-flow-row="mix"] [data-flow-day="sun"]').check()
+        p.locator('[data-run-timeout]').fill('600')
+        self.assertIn('草稿關係',p.locator('[data-plan-stage="acid"]').inner_text())
+        p.locator('[data-plan-apply]').click()
+        call=p.evaluate('calls.at(-1)')
+        self.assertEqual(call[:2],['uninus_nutriculture','apply_flow_plan_v5'])
+        d=call[2]
+        self.assertEqual(set(d),{'config_entry_id','expected_revision','expected_flow_plan_revision','flow_plan','allowed_weekdays'})
+        self.assertEqual(d['flow_plan']['rows'][2]['stage'],'mix')
+        acid=d['flow_plan']['rows'][3]
+        self.assertEqual((acid['start_rule'],acid['delay_seconds'],acid['wait_timeout_seconds']),('after_previous_started',12,45))
+        self.assertEqual(acid['condition'],{'source':'level','operator':'gte','value':0.5})
+        self.assertEqual(d['allowed_weekdays']['mix'],['sun'])
+        self.assertEqual(d['flow_plan']['run_timeout_seconds'],600)
+        self.assertNotIn('已套用',p.locator('[data-plan-message]').inner_text())
+
+    def test_p5a_container_geometry_and_keyboard(self):
+        self.flow_fixture()
+        p=self.page
+        p.set_viewport_size({'width':1280,'height':900})
+        for theme in ['light','dark']:
+            for width,height in [(320,360),(320,740),(360,640),(768,900)]:
+                with self.subTest(theme=theme,width=width,height=height):
+                    p.evaluate("""({width,height,theme})=>{document.body.style.padding='0';let shell=document.querySelector('#p5-shell');if(!shell){shell=document.createElement('div');shell.id='p5-shell';card.before(shell);shell.append(card)}shell.style.cssText=`width:${width}px;height:${height}px;overflow:auto`;card.style.cssText=`width:100%;--primary-text-color:${theme==='dark'?'#eee':'#213b48'};--card-background-color:${theme==='dark'?'#18232b':'#fff'}`;}""",{'width':width,'height':height,'theme':theme})
+                    geometry=p.evaluate("""()=>{const host=card.getBoundingClientRect(),panel=card.planPanel.getBoundingClientRect();return {host:host.width,overflow:card.scrollWidth>card.clientWidth,controls:[...card.planPanel.querySelectorAll('input,select,button')].map(n=>{const r=n.getBoundingClientRect();return {tag:n.tagName,left:r.left-host.left,right:r.right-host.left,height:r.height,stage:!!n.closest('[data-plan-stage]')}})}}""")
+                    self.assertLessEqual(geometry['host'],width)
+                    self.assertFalse(geometry['overflow'],geometry)
+                    for c in geometry['controls']:
+                        self.assertGreaterEqual(c['left'],-1,c)
+                        self.assertLessEqual(c['right'],width+1,c)
+                        if c['stage']:
+                            self.assertGreaterEqual(c['height'],44,c)
+                    labels=p.locator('[data-flow-row="mix"] label').filter(has=p.locator('[data-flow-day="sun"]'))
+                    self.assertGreaterEqual(labels.bounding_box()['height'],44)
+                    was=p.locator('[data-flow-row="mix"] [data-flow-day="sun"]').is_checked()
+                    labels.click(position={'x':5,'y':5})
+                    self.assertEqual(p.locator('[data-flow-row="mix"] [data-flow-day="sun"]').is_checked(),not was)
+                    p.locator('[data-plan-cancel]').scroll_into_view_if_needed()
+                    p.locator('[data-plan-preview]').scroll_into_view_if_needed()
+                    if os.environ.get('BROWSER_EVIDENCE_DIR'):
+                        out=Path(os.environ['BROWSER_EVIDENCE_DIR']);out.mkdir(parents=True,exist_ok=True)
+                        p.locator('[data-plan-stage]').first.scroll_into_view_if_needed()
+                        p.locator('#p5-shell').screenshot(path=str(out/f'p5a-{theme}-{width}x{height}.png'))
+        # Only keyboard activates navigation, reorder, days and all three actions.
+        def tab_to(locator):
+            for _ in range(240):
+                if locator.evaluate('(n)=>n===card.shadowRoot.activeElement'):
+                    return
+                p.keyboard.press('Tab')
+            self.fail('keyboard target unreachable: '+str(locator))
+        nav=p.locator('[data-plan-stage="mix"] button')
+        tab_to(nav);p.keyboard.press('Enter')
+        self.assertTrue(p.evaluate("card.shadowRoot.activeElement===card.planRows.get('mix').rule"))
+        p.keyboard.press('Shift+Tab')
+        self.assertTrue(p.evaluate("card.shadowRoot.activeElement===card.planRows.get('mix').up"))
+        p.keyboard.press('Space')
+        self.assertTrue(p.evaluate("card.shadowRoot.activeElement===card.planRows.get('mix').up"))
+        p.keyboard.press('Enter');p.keyboard.press('Enter')
+        self.assertTrue(p.evaluate("card.shadowRoot.activeElement===card.planRows.get('mix').rule"),'disabled edge move falls back to same stage rule')
+        tab_to(p.locator('[data-plan-cancel]'));p.keyboard.press('Enter')
+        tab_to(nav);p.keyboard.press('Space')
+        day=p.locator('[data-flow-row="mix"] [data-flow-day="sun"]')
+        tab_to(day);p.keyboard.press('Space');self.assertTrue(day.is_checked())
+        tab_to(p.locator('[data-plan-preview]'));p.keyboard.press('Enter')
+        self.assertIn('預覽失敗',p.locator('[data-plan-message]').inner_text())
+        tab_to(p.locator('[data-plan-apply]'));p.keyboard.press('Space')
+        self.assertEqual(p.evaluate('calls.at(-1)[1]'),'apply_flow_plan_v5')
+        tab_to(p.locator('[data-plan-cancel]'));p.keyboard.press('Enter')
+        self.assertIsNone(p.evaluate('card.planDraft'))
+
+    def test_p5a_trusted_typing_refresh_focus_scroll(self):
+        self.flow_fixture()
+        p=self.page
+        p.evaluate("""()=>{document.body.style.padding='0';const shell=document.createElement('div');shell.style.cssText='width:320px;height:360px;overflow:auto';card.before(shell);shell.append(card);window.p5shell=shell;window.p5hass=card.hass;}""")
+        field=p.locator('[data-flow-row="acid"] [data-flow-field="delay_seconds"]')
+        field.fill('')
+        field.focus()
+        p.evaluate("""()=>{window.p5input=card.planRows.get('acid').delay;window.p5ancestors=[];for(let n=p5input;n;n=n.parentNode||n.host)p5ancestors.push(n);window.p5blur=0;window.p5removed=0;window.p5scroll=p5shell.scrollTop;window.p5cas=[card.planDraft.revision,card.planDraft.planRevision];p5input.addEventListener('blur',()=>p5blur++);window.p5observer=new MutationObserver(records=>{for(const r of records)for(const n of r.removedNodes)if(p5ancestors.includes(n))p5removed++});p5observer.observe(card.shadowRoot,{subtree:true,childList:true});p5input.addEventListener('input',()=>{p5hass.states[p5hass.states['sensor.status'].attributes.source_entities.ph]={state:'5.7',attributes:{}};card.hass=p5hass});}""")
+        field.press_sequentially('125',delay=50)
+        self.assertEqual(field.input_value(),'125')
+        self.assertEqual(p.evaluate('[p5blur,p5removed]'),[0,0])
+        self.assertTrue(p.evaluate("p5input===card.planRows.get('acid').delay&&card.shadowRoot.activeElement===p5input&&p5ancestors.every(n=>n.isConnected)"))
+        self.assertEqual(p.evaluate('[card.planDraft.revision,card.planDraft.planRevision]'),p.evaluate('p5cas'))
+        self.assertEqual(p.evaluate('p5shell.scrollTop'),p.evaluate('p5scroll'))
+        p.evaluate('p5observer.disconnect()')
+
+    def test_p5a_same_context_control_properties_stable(self):
+        self.flow_fixture()
+        p=self.page
+        p.locator('[data-flow-row="acid"] [data-flow-field="delay_seconds"]').fill('12')
+        p.evaluate("""()=>{window.p5redundant=[];window.p5unhandled=[];window.addEventListener('unhandledrejection',e=>p5unhandled.push(String(e.reason)));for(const node of card.planPanel.querySelectorAll('input,select,button'))for(const key of ['value','checked','disabled']){let proto=node,descriptor;while(proto&&!descriptor){descriptor=Object.getOwnPropertyDescriptor(proto,key);proto=Object.getPrototypeOf(proto)}if(!descriptor?.set)continue;Object.defineProperty(node,key,{get(){return descriptor.get.call(this)},set(v){if(descriptor.get.call(this)===v)p5redundant.push(key);descriptor.set.call(this,v)}})}for(let i=0;i<3;i++)card.hass={...card.hass};}""")
+        self.assertEqual(p.evaluate('p5redundant'),[],'same-context telemetry must not rewrite equivalent controlled properties')
+        self.assertEqual(p.evaluate('p5unhandled'),[])
+
+    def p5a_owner_fixture(self):
+        self.flow_fixture()
+        self.page.evaluate("""()=>{window.p5h=card.hass;p5h.user={id:'operator-a',is_admin:true,is_active:true};p5h.connection=new EventTarget();p5h.connection.connected=true;window.p5pending=[];window.p5route=m=>{calls.push(m);return new Promise((resolve,reject)=>p5pending.push({m,resolve,reject}))};window.p5ws=m=>p5route(m);p5h.callWS=p5ws;card.hass=p5h;window.p5finish=()=>{for(const {m,resolve} of p5pending.splice(0)){const d=m.service_data;resolve({response:m.service==='preview_flow_plan_v5'?{settings_revision:d.expected_revision,flow_plan_revision:d.expected_flow_plan_revision,weekday:d.weekday,rows:d.flow_plan.rows.map((r,i)=>({stage:r.stage,eligibility:i===1&&d.weekday==='sun'?'skipped_disabled':['eligible','skipped_weekday','blocked_dependency','blocked_safety'][i],earliest_offset_seconds:null,uncertainties:['sensor_duration_unknown']})),warnings:['admission_day_only']}:{applied:true,settings_revision:d.expected_revision+1,flow_plan_revision:d.expected_flow_plan_revision+1,flow_plan:d.flow_plan,allowed_weekdays:d.allowed_weekdays}})}};}""")
+
+    def test_p5a_pending_scope_transport_and_failure_cleanup(self):
+        self.p5a_owner_fixture()
+        p=self.page
+        field=p.locator('[data-flow-row="acid"] [data-flow-field="delay_seconds"]')
+        field.fill('12')
+        p.locator('[data-plan-apply]').click()
+        p.evaluate("()=>{window.p5op=card.planOperation;window.p5draft=card.planDraft;card.setConfig({...card.config});card.hass={...p5h};}")
+        self.assertTrue(p.evaluate('card.planOperation===p5op'),'equivalent config must not revoke native operation')
+        p.evaluate("()=>{p5h.callWS=m=>p5route(m);card.hass=p5h;card.applyPlan()}")
+        self.assertEqual(p.evaluate('calls.length'),1)
+        self.assertTrue(p.evaluate("card.flights.has('plan:'+p5draft.entry)"))
+        self.assertTrue(p.evaluate('card.planDraft===p5draft'))
+        p.evaluate('p5finish()')
+        self.assertIsNone(p.evaluate('card.planOperation'),'obsolete settled operation must release its own busy state')
+        self.assertFalse(p.locator('[data-plan-preview]').is_disabled())
+        self.assertNotIn('已送出',p.locator('[data-plan-message]').inner_text())
+        p.locator('[data-plan-apply]').click()
+        p.evaluate("()=>{p5h.connection.connected=false;p5h.connection.dispatchEvent(new Event('disconnected'));p5h.connection.connected=true;p5h.connection.dispatchEvent(new Event('ready'));card.applyPlan()}")
+        self.assertEqual(p.evaluate('calls.length'),2)
+        p.evaluate("p5pending.splice(0).forEach(q=>q.reject(new Error('old transport failure')))")
+        self.assertIsNone(p.evaluate('card.planOperation'))
+        self.assertEqual(field.input_value(),'12')
+        p.locator('[data-plan-apply]').click()
+        # A new semantic scope can own a flight while the former scope settles.
+        p.evaluate("""()=>{window.oldPlan=p5pending.shift();const a=p5h.states['sensor.status'].attributes;a.settings_target={...a.settings_target,config_entry_id:'entry-b'};a.flow_plan_target={...a.flow_plan_target,config_entry_id:'entry-b'};card.hass=p5h;}""")
+        self.assertIsNone(p.evaluate('card.planDraft'))
+        field.fill('23');p.locator('[data-plan-apply]').click()
+        p.evaluate("()=>{window.newPlanOp=card.planOperation;oldPlan.reject(new Error('old scope failure'))}")
+        self.assertTrue(p.evaluate('card.planOperation===newPlanOp'))
+        p.evaluate("p5pending.splice(0).forEach(q=>q.reject(new Error('current generic failure')))")
+        self.assertIsNone(p.evaluate('card.planOperation'))
+        self.assertEqual(field.input_value(),'23')
+        self.assertFalse(p.locator('[data-plan-preview]').is_disabled())
+        self.assertEqual(p.evaluate('calls.filter(q=>q.service===\'apply_flow_plan_v5\').length'),4)
+
+    def test_p5a_principal_role_and_entry_denial_purge(self):
+        self.p5a_owner_fixture()
+        p=self.page
+        field=p.locator('[data-flow-row="acid"] [data-flow-field="delay_seconds"]')
+        for change in ["p5h.user.id='operator-b'","p5h.user.is_admin=false","p5h.user.is_active=false"]:
+            field.fill('12')
+            p.locator('[data-plan-preview]').click()
+            p.evaluate('()=>{'+change+';card.hass=p5h;}')
+            self.assertIsNone(p.evaluate('card.planDraft'),'primitive principal / role / active transition purges draft')
+            p.evaluate('p5finish()')
+            self.assertEqual(p.locator('[data-preview-day]').count(),0)
+        p.evaluate("()=>{p5h.user.is_active=true;p5h.user.is_admin=true;card.hass=p5h}")
+        field.fill('12');p.locator('[data-plan-apply]').click()
+        p.evaluate("p5pending.splice(0).forEach(q=>q.reject({code:'unauthorized'}))")
+        self.assertIsNone(p.evaluate('card.planDraft'))
+        self.assertTrue(p.locator('[data-plan-preview]').is_disabled())
+        self.assertEqual(p.locator('[data-preview-day]').count(),0)
+
+    def test_p5a_preview_semantics_cancel_and_stale_owner(self):
+        self.p5a_owner_fixture()
+        p=self.page
+        p.locator('[data-plan-preview]').click()
+        self.assertEqual(p.evaluate('calls.length'),7)
+        p.evaluate('p5finish()')
+        self.assertEqual(p.locator('[data-preview-day]').count(),7)
+        rendered=p.locator('[data-preview-results]').inner_text()
+        for value in ['eligible','skipped_disabled','skipped_weekday','blocked_dependency','blocked_safety','未知','sensor_duration_unknown']:
+            self.assertIn(value,rendered)
+        self.assertNotIn('0s',rendered)
+        p.locator('[data-plan-cancel]').click()
+        self.assertEqual(p.locator('[data-preview-day]').count(),0)
+        p.locator('[data-plan-preview]').click()
+        p.locator('[data-flow-row="acid"] [data-flow-field="delay_seconds"]').fill('9')
+        p.evaluate('p5finish()')
+        self.assertEqual(p.locator('[data-preview-day]').count(),0)
+        p.locator('[data-plan-preview]').click()
+        p.evaluate("()=>{p5h.callWS=m=>p5route(m);card.hass=p5h}")
+        p.evaluate('p5finish()')
+        self.assertEqual(p.locator('[data-preview-day]').count(),0,'former transport preview cannot return')
+        self.assertFalse(p.locator('[data-plan-preview]').is_disabled())
+        self.assertEqual(p.evaluate('calls.filter(q=>q.service===\'apply_flow_plan_v5\').length'),0)
+
+    def test_p5a_preview_apply_ack_reopen_and_invalid_first_row(self):
+        # Native-shaped transport fixture only; real registered Core join is separate.
+        self.p5a_owner_fixture()
+        p=self.page
+        p.locator('[data-flow-row="refill"] [data-move="down"]').click()
+        self.assertTrue(p.locator('[data-plan-preview]').is_disabled())
+        self.assertTrue(p.locator('[data-plan-apply]').is_disabled())
+        p.evaluate('()=>{card.previewPlan();card.applyPlan()}')
+        self.assertEqual(p.evaluate('calls.length'),0)
+        self.assertIn('首列',p.locator('[data-plan-message]').inner_text())
+        p.locator('[data-plan-cancel]').click()
+        p.locator('[data-plan-stage="acid"] button').click()
+        p.locator('[data-flow-row="acid"] [data-flow-field="delay_seconds"]').fill('125')
+        p.locator('[data-flow-row="mix"] [data-flow-day="sun"]').check()
+        p.locator('[data-plan-preview]').click();p.evaluate('p5finish()')
+        self.assertEqual(p.locator('[data-preview-day]').count(),7)
+        p.locator('[data-plan-apply]').click()
+        p.evaluate("""()=>{const a=p5h.states['sensor.status'].attributes,d=calls.at(-1).service_data;a.flow_plan=structuredClone(d.flow_plan);a.allowed_weekdays=structuredClone(d.allowed_weekdays);a.settings_revision=d.expected_revision+1;a.flow_plan_revision=d.expected_flow_plan_revision+1;card.hass=p5h;}""")
+        self.assertNotIn('已套用',p.locator('[data-plan-message]').inner_text())
+        p.evaluate('p5finish()')
+        self.assertIn('已套用',p.locator('[data-plan-message]').inner_text())
+        self.assertIsNone(p.evaluate('card.planDraft'))
+        p.evaluate("""()=>{card.remove();window.card=document.createElement('uninus-nutriculture-card');document.body.append(card);card.setConfig({entity:'sensor.status'});card.hass=p5h;}""")
+        self.assertEqual(p.locator('[data-flow-row="acid"] [data-flow-field="delay_seconds"]').input_value(),'125')
+        self.assertTrue(p.locator('[data-flow-row="mix"] [data-flow-day="sun"]').is_checked())
+        p.locator('[data-plan-cancel]').click()
+        self.assertEqual(p.evaluate("calls.filter(m=>m.service==='apply_flow_plan_v5').length"),1)
+
     def test_43_v5_visible_editor_atomic_weekdays_order(self):
         self.flow_fixture()
         p=self.page
