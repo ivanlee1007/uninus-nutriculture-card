@@ -1,4 +1,4 @@
-> 現行來源狀態（2026-11-08）：P1–P3、P4a／P4b／P4c軟體來源及對應精確HEAD hosted CI已交付。本版P5a四階段視覺工作台／手機鍵盤已實作，修正後完整SPEC與品質兩審均批准，Q-01已關閉；Preview／Apply／Options／Store與fresh SDK隔離驗收已通過。P5a joint-review repair 1/1已用，P4c 4/4及P3 5/5結案不重置。本提交仍須以其精確HEAD hosted CI與遠端產物完成來源交付核驗；不得將本機或來源審查當成hosted CI／完整P5／實機／HACS驗收。完整P5十二項後續範圍保留，未tag／release／部署。
+> 現行來源狀態（2026-11-08）：P1–P3、P4a／P4b／P4c與P5a首片已完成軟體來源交付。P5a交付基線：Backend `4a08e615bf1949ecbeea37fdba4696c5bf8d3062`（CI `42458123964`）、Card `3eaa78c55043598fd4bc666c8ef432b8870d6701`（CI `42458104719`）；獨立SPEC／品質、出版等價與遠端產物核驗已完成。 本提交新增P5b同槽pH／EC／液位歷史，功能、真Recorder整合與獨立SPEC／品質兩審已完成，B-01已關閉；出版與hosted CI以本提交的實際核驗結果為準，不冒用P5a基線CI。P5b唯一修補批次1/1已用，不重置舊額度。P5a joint-review修補1/1與具名read-side revocation修補1/1已用；P4c 4/4、P3 5/5結案不重置。完整P5十二組保留，部分已交付不等於全組完成；未實機／HACS／tag／release／部署。
 
 
 > 導航優先序：FUNCTIONAL_PARITY_REVIEW.md是舊commit的歷史F/D盤點，不代表目前沒有控制能力或所有D/R仍未決；不改寫其原文。P3C_FLOW_CONTRACT.md頂部提案語句屬來源歷史，現行以其§7已採納補充及本輪交付狀態為準，不再次凍結或重審。
@@ -6,7 +6,7 @@
 
 ## 目前開發狀態與完整目標
 
-**P1–P3、P4a／P4b／P4c軟體來源已交付；P5a視覺工作台／手機鍵盤來源與兩審已完成，精確HEAD CI及遠端交付核驗另列。**
+**P1–P3、P4a／P4b／P4c與P5a首片均已完成正式軟體來源、兩審、出版等價、精確HEAD CI及遠端交付核驗；完整P5、實機與HACS未完成。**
 
 P3a 工程來源已交付，兩審與功能來源 CI 已完成，見 [P3A_PUBLICATION.md](docs/P3A_PUBLICATION.md)。本倉 P3b 加酸、獨立攪拌與 S4/schema4 已接通唯一後端並完成獨立規格及品質兩審；已審來源的 295 項 native 假硬體測試不代表真 HA／HACS／實機驗收。P3c 四階段可編順序／合法重疊／相對延遲與條件／星期及七日有效流程預覽已接通並完成兩審，P3軟體已交付而實機範圍分開；本文件不更新或重述遠端Issue即時狀態。P3b 來源交付不必等待完整 P3。P3b 遠端 CI 只以最終 commit 的實際 Actions 為準，不以本機 gate 代替；沒有內建 scheduler 或獨立 stage_link，未建立 tag/release 或部署。
 
@@ -138,7 +138,7 @@ schema1不顯示控制操作；schema2另提供總/補水/整輪Switch與急停/
 - P1–P3軟體已交付：schema2補水、schema3加養/群組設定、schema4酸/獨立mix與schema5有限編排均有來源/兩審/對應CI；物理commissioning及HACS另列未驗。
 - P3（軟體已交付）：四階段可配置順序/重疊/相對延遲與條件、每階段七日複選；最小可排序階段列＋開始條件＋並行組＋預覽、加藥/混合/資源仲裁、成組原子參數與版本衝突處理。
 - P4：配方、外部action/結果互通與通知、完成/品質/灌溉許可介面。何時啟動整輪由外部排程/HA automation決定；不建排程器、不匯入排程、不管理外部腳本/旁支。星期只判允許，不自動產生工作；混合/脈衝/安全期限仍屬後端。
-- P5：進階視覺化編輯器、手機/鍵盤體驗、診斷/歷史與完整多槽產品；不是把核心可配置流程延到P5。
+- P5a四階段視覺關係入口／手機鍵盤首片已交付；完整P5的後續進階編輯、完整手機鍵盤體驗、歷史／診斷與完整多槽產品仍保留；不是把核心可配置流程延到P5。
 - 正式發行、HACS 遠端安裝、真實 HA 與實體設備驗收皆未執行；GitHub 程式推送不代表這些步驟已完成。
 
 研究依據見 [流程編排/UI、星期與外部啟動研究](docs/FLOW_DESIGN_RESEARCH.md)。已確認取消獨立stage_link，以編排決定接續；R03採各階段實際開始前查星期，新增原生整輪運行Switch。P3c 有限圖語意已凍結；R04 已凍結，P3c 可編流程已提供。
@@ -178,8 +178,14 @@ schema1不顯示控制操作；schema2另提供總/補水/整輪Switch與急停/
 
 - 以 [P4C_RESULT_NOTIFICATION_CONTRACT.md](docs/P4C_RESULT_NOTIFICATION_CONTRACT.md) §8及 [P4C_API_SCHEMA.json](docs/P4C_API_SCHEMA.json)優先：既有整輪trigger→穩定result_v1投影／事件；nativeOptions與Card共用私有通知權威、選native provider／事件／cooldown；default disabled。無scheduler、任意service runner或直接灌溉。
 - P4c R4來源兩審、本機完整gate、出版等價、正式Card commit pin、新exact-HEAD hosted CI及遠端／下載產物核驗均已完成。P4c 4/4、P3 5/5結案，不重開產品修復。通知失敗／ACK不改安全OFF、fault、quality或permit；Core STOP與普通flow Stop分辨；明確private reconcile，不自動entry reload。
-- P5進階視覺、手機／鍵盤、完整歷史／診斷、兩槽各自全流程／跨槽共output commissioning、HACS與實機仍保留；P4c必要idle低pH／高EC唯讀告警G1不延後。原F/D及歷史失敗不回寫。
+- P5a四階段視覺入口／手機鍵盤首片已交付；P5後續進階視覺與完整手機鍵盤、完整歷史／診斷、兩槽各自全流程／跨槽共output commissioning、HACS與實機仍保留；P4c必要idle低pH／高EC唯讀告警G1不延後。原F/D及歷史失敗不回寫。
 
 ## P5a 視覺工作台與操作入口
 
-四階段關係按鈕可進入既有規則欄位，保留調序／重疊／延遲／有限條件／星期→七日後端Preview→明確套用→native讀回／重開路徑；見[P5a視覺工作台操作說明](docs/P5A_VISUAL_WORKFLOW.md)。真隔離Core19 requests整合與修正後獨立SPEC→品質兩審已完成；精確HEAD hosted CI與遠端交付核驗另列，不宣稱完整P5或實機完成。草稿示意／Preview不保證物理可行性或arrival；不增加schema、scheduler、raw IO或現場控制。
+四階段關係按鈕可進入既有規則欄位，保留調序／重疊／延遲／有限條件／星期→七日後端Preview→明確套用→native讀回／重開路徑；見[P5a視覺工作台操作說明](docs/P5A_VISUAL_WORKFLOW.md)。真隔離Core19 requests整合與修正後獨立SPEC→品質兩審已完成；既有P5a基線精確HEAD hosted CI與遠端交付核驗亦已完成；後續新候選另驗自身CI，不宣稱完整P5或實機完成。草稿示意／Preview不保證物理可行性或arrival；不增加schema、scheduler、raw IO或現場控制。
+
+## P5b：同槽 pH／EC／液位歷史
+
+選擇槽的狀態Entity後，展開「歷史」並選擇1／6／24小時；來源自動沿用後端`source_entities`，不另填感測ID。支援分圖、觸控／鍵盤選點及資料表。正常密集資料採保留首尾、分段極值與缺口的有界代表抽樣；無法安全表示的指標獨立提示，不清空其他指標。原始／正規化／顯示筆數均明示。
+
+無可讀紀錄可能是Recorder保留／排除或READ權限過濾，不代表健康或確定沒有Recorder；歷史不影響控制、品質或灌溉許可。詳見[P5b操作與限制](docs/P5B_HISTORY_CONTRACT.md)。本片不等於完整P5、HACS實裝或實機驗收；未部署／tag／release。

@@ -134,6 +134,7 @@
     :host{container-type:inline-size}.group-param{grid-template-columns:minmax(0,1fr) minmax(70px,110px)}fieldset{min-width:0;border:1px solid var(--divider-color,#d9e4e7);margin:8px 0}fieldset label{display:inline-flex;align-items:center;gap:4px;margin:4px}fieldset input{width:auto;min-height:24px} [data-group-message]{font-size:12px;white-space:pre-line} [data-group-settings]>button{margin:10px 6px 0 0;min-height:40px}
     [data-flow-editor]{min-width:0;font-size:14px}[data-flow-editor] nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}[data-plan-stage]{min-width:0;padding:10px;border:1px solid var(--divider-color,#d9e4e7);border-radius:10px;background:var(--secondary-background-color,#edf5f6)}[data-plan-stage] p{margin:8px 0 0;font-size:13px;line-height:1.55}
     [data-flow-editor] button{min-height:44px;white-space:normal}[data-flow-editor]>button{margin:6px 6px 6px 0}[data-flow-row]{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;padding:10px}[data-flow-row] legend{font-weight:600}[data-flow-row] label{display:flex;flex-direction:column;align-items:stretch;min-width:0;margin:0;gap:4px}[data-flow-row] input:not([type=checkbox]),[data-flow-row] select{width:100%;min-width:0;max-width:100%;min-height:44px;font:inherit;color:inherit;background:var(--card-background-color,#fff);border:1px solid var(--divider-color,#cddce1);border-radius:7px}[data-flow-row] label:has([type=checkbox]){flex-direction:row;align-items:center;min-height:44px;padding:6px;border:1px solid var(--divider-color,#d9e4e7);border-radius:7px;cursor:pointer}[data-flow-row] input[type=checkbox]{width:22px;height:22px;min-height:22px;margin:0 6px 0 0}[data-step-runtime]{grid-column:1/-1;margin:4px 0}[data-preview-day]{border-top:1px solid var(--divider-color,#d9e4e7)}[data-preview-day] p{line-height:1.6}
+    [data-history-panel]{min-width:0}[data-history-panel] select{min-height:44px;font:inherit;color:inherit;background:var(--card-background-color,#fff);max-width:100%}[data-history-panel] button{min-height:44px;margin:6px}[data-history-plot]{display:block;width:100%;height:auto;min-height:140px;color:var(--primary-color,#277b86);fill:currentColor;touch-action:pan-y}[data-history-panel] table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:11px}[data-history-panel] td,[data-history-panel] th{overflow-wrap:anywhere;padding:4px;text-align:left;border-bottom:1px solid var(--divider-color,#d9e4e7)}
     @container(max-width:420px){[data-flow-editor] nav{grid-template-columns:minmax(0,1fr)}}
     @container(max-width:360px){ha-card{padding:12px}.tile strong{font-size:20px}.tile{padding:10px 6px}}
   `;
@@ -523,6 +524,142 @@
       }catch(e){if(current()){this.qualityData=null;this.qualityNotice=e?.code==='quality_conflict'?'品質版本衝突；草稿保留，請取消後重新整理':'品質操作失敗；草稿保留，請明確重新整理';}}
       finally{if(this.qualityFlights.get(op.entry)===op)this.qualityFlights.delete(op.entry);if(this.qualityOperation===op){const valid=current();if(!valid)this.qualityNotice='連線或版本已變更；草稿保留，請明確重新整理';this.qualityOperation=null;this.renderQuality();if(automatic&&valid)this.qualityConverge();}else this.renderQuality();}
     }
+    historyInit() {
+      if(this.historyPanel)return;
+      this.historyGeneration=0;this.historyPanel=make('details');this.historyPanel.dataset.historyPanel='';
+      const summary=make('summary','同槽 pH / EC / 液位歷史');summary.dataset.historyToggle='';
+      this.historyWindow=make('select');this.historyWindow.dataset.historyWindow='';this.historyWindow.setAttribute('aria-label','歷史時間窗口');
+      for(const value of ['1','6','24']){const o=make('option',`${value} 小時`);o.value=value;this.historyWindow.append(o);}
+      this.historyRefresh=make('button','重新整理歷史');this.historyRefresh.dataset.historyRefresh='';this.historyRefresh.type='button';
+      this.historyStatus=make('p','尚未查詢');this.historyStatus.dataset.historyStatus='';this.historyStatus.setAttribute('role','status');
+      this.historyError=make('p');this.historyError.dataset.historyError='';this.historyError.setAttribute('role','alert');
+      const label=make('label','窗口 ');label.append(this.historyWindow);
+      this.historyPanel.append(summary,label,this.historyRefresh,this.historyStatus,this.historyError);
+      this.historyMetrics={};for(const [key,name] of [['ph','pH'],['ec','EC'],['level','液位']]){
+        const section=make('section');section.dataset.historyMetric=key;const table=make('table');table.dataset.historyTable=key;
+        const plot=document.createElementNS('http://www.w3.org/2000/svg','svg');plot.dataset.historyPlot=key;plot.setAttribute('viewBox','0 0 300 140');plot.setAttribute('tabindex','0');plot.setAttribute('role','group');plot.setAttribute('aria-label',`${name} 歷史圖；左右鍵、Home、End 選取，亦可觸碰；下方有資料表`);
+        const active=make('p','尚無選取點');active.dataset.historyActivePoint=key;active.setAttribute('aria-live','polite');
+        const nodes={section,table,plot,active,points:[],index:0};this.historyMetrics[key]=nodes;
+        plot.addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key)||!nodes.points.length)return;e.preventDefault();nodes.index=e.key==='Home'?0:e.key==='End'?nodes.points.length-1:Math.max(0,Math.min(nodes.points.length-1,nodes.index+(e.key==='ArrowRight'?1:-1)));this.historyInspect(nodes);});
+        plot.addEventListener('pointerdown',e=>{if(!nodes.points.length)return;const r=plot.getBoundingClientRect(),x=(e.clientX-r.left)/r.width*300;nodes.index=nodes.points.reduce((best,p,i)=>Math.abs(p.x-x)<Math.abs(nodes.points[best].x-x)?i:best,0);this.historyInspect(nodes);});
+        section.append(make('h3',name),plot,active,table);this.historyPanel.append(section);
+      }
+      this.historyPanel.append(make('p','僅讀取原生 Recorder 可讀保留資料；可能排除、清除或無讀取權限。Entity 重用／改名／重新綁定後，歷史不保證屬於此實體槽。歷史不影響品質、許可或控制。'));
+      this.historyPanel.addEventListener('toggle',()=>{if(this.historyPanel.open)this.historyRequest();else{this.historyIntent=false;this.historyPurge('歷史面板已關閉；資料已清除');}});this.historyRefresh.addEventListener('click',()=>this.historyRequest());this.historyWindow.addEventListener('change',()=>this.historyRequest());this.root.append(this.historyPanel);
+    }
+    historyTime(t) {
+      let zone=this._hass?.config?.time_zone??'UTC',fallback=false;
+      try{new Intl.DateTimeFormat('en-GB',{timeZone:zone}).format(t);}catch{zone='UTC';fallback=true;}
+      return `${new Intl.DateTimeFormat('en-GB',{timeZone:zone,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',fractionalSecondDigits:3,timeZoneName:'longOffset',hourCycle:'h23'}).format(t)} ${zone}${fallback?'（時區無效，回退 UTC）':''}`;
+    }
+    historyInspect(nodes) {
+      const p=nodes.points[nodes.index];text(nodes.active,p?`${this.historyTime(p.t)} · ${p.value??'缺值'} ${p.unit} ${p.note??''}`:'無可讀歷史資料');
+      for(const c of nodes.plot.querySelectorAll('circle'))c.setAttribute('r',Number(c.dataset.index)===nodes.index?'4':'2');
+    }
+    historyDraw(key,points,start,end) {
+      const n=this.historyMetrics[key];n.points=points;n.index=0;n.table.replaceChildren();n.plot.replaceChildren();
+      const caption=make('caption',`${key} 歷史；時間／值／單位／說明`);n.table.append(caption);const head=make('tr');for(const s of ['時間','值','單位','說明']){const th=make('th',s);th.scope='col';head.append(th);}n.table.append(head);
+      const values=points.filter(p=>p.value!==null).map(p=>p.value),min=Math.min(...values),max=Math.max(...values),scale=Math.max(Math.abs(min),Math.abs(max),1);let path='';
+      if(values.length){for(const [y,s] of [[12,`${max} ${points.find(p=>p.value!==null).unit||'pH（無單位）'}`],[138,String(min)]]){const label=document.createElementNS('http://www.w3.org/2000/svg','text');label.setAttribute('x','20');label.setAttribute('y',y);label.setAttribute('font-size','10');label.textContent=s;n.plot.append(label);}}
+      for(const [index,p] of points.entries()){
+        p.x=20+(p.t-start)/(end-start)*260;const tr=make('tr');for(const s of [this.historyTime(p.t),p.value===null?'缺值':String(p.value),p.unit,p.note??''])tr.append(make('td',s));n.table.append(tr);
+        if(p.value===null){path+=' ';continue;}
+        const y=max===min?70:120-(p.value/scale-min/scale)/(max/scale-min/scale)*100;
+        path+=`${index===0||points[index-1].value===null?'M':'L'}${p.x},${y} `;
+        const c=document.createElementNS('http://www.w3.org/2000/svg','circle');c.setAttribute('cx',p.x);c.setAttribute('cy',y);c.setAttribute('r','2');c.dataset.index=index;n.plot.append(c);
+      }
+      const line=document.createElementNS('http://www.w3.org/2000/svg','path');line.setAttribute('d',path);line.setAttribute('fill','none');line.setAttribute('stroke','currentColor');n.plot.prepend(line);this.historyInspect(n);
+    }
+    historyRepresent(points) {
+      if(points.length<=240)return points;
+      // Mandatory witnesses: both ends of every finite/gap run and finite-run extrema.
+      // Gap annotation changes are boundaries too; never hide incompatible units.
+      const keep=new Set();
+      for(let first=0;first<points.length;){
+        const gap=points[first].value===null;let last=first,min=first,max=first;
+        while(last+1<points.length&&(points[last+1].value===null)===gap){
+          last++;if(points[last].value<points[min].value)min=last;if(points[last].value>points[max].value)max=last;
+          if(gap&&(points[last].unit!==points[last-1].unit||points[last].note!==points[last-1].note)){keep.add(last-1);keep.add(last);}
+        }
+        keep.add(first);keep.add(last);if(!gap){keep.add(min);keep.add(max);}first=last+1;
+      }
+      if(keep.size>240)return null;
+      // Deterministic chronological buckets add only actual finite measurements.
+      // This preserves segment extrema, not every local turning point.
+      const buckets=Math.floor((240-keep.size)/2);
+      for(let b=0;b<buckets;b++){
+        const first=Math.floor(b*points.length/buckets),end=Math.floor((b+1)*points.length/buckets);let min=-1,max=-1;
+        for(let i=first;i<end;i++)if(points[i].value!==null){if(min<0||points[i].value<points[min].value)min=i;if(max<0||points[i].value>points[max].value)max=i;}
+        if(min>=0){keep.add(min);keep.add(max);}
+      }
+      return [...keep].sort((a,b)=>a-b).map(i=>points[i]);
+    }
+    historyDecode(result,ids,mapping,start,end) {
+      const bad=()=>{throw {code:'invalid_history'};};
+      if(!result||typeof result!=='object'||Array.isArray(result)||Object.keys(result).some(k=>!ids.includes(k)))bad();
+      let raw=0,shown=0,missing=0,sampled=false;const series={},counts={},refused=[];
+      for(const id of ids){if(!Object.hasOwn(result,id))continue;const rows=result[id];if(!Array.isArray(rows)||rows.length>10000)bad();raw+=rows.length;if(raw>30000)bad();}
+      for(const key of ['ph','ec','level']){
+        const rows=Object.hasOwn(result,mapping[key])?result[mapping[key]]:[];
+        const unique=new Map();let carry=null;
+        for(const row of rows){
+          if(!row||typeof row!=='object'||Array.isArray(row)||typeof row.s!=='string'||typeof row.lu!=='number'||!Number.isFinite(row.lu)||Math.abs(row.lu*1000)>8640000000000000||!row.a||typeof row.a!=='object'||Array.isArray(row.a)||(row.a.unit_of_measurement!==undefined&&row.a.unit_of_measurement!==null&&typeof row.a.unit_of_measurement!=='string')||(row.lc!==undefined&&(typeof row.lc!=='number'||!Number.isFinite(row.lc))))bad();
+          const t=row.lu*1000;if(t>end)continue;
+          if(t<start){if(!carry||row.lu>=carry.lu)carry=row;continue;}unique.set(t,row);
+        }
+        // Last response row wins at equal timestamps. Only newest pre-window state is carried;
+        // future rows are dropped. A boundary state is not a new measurement.
+        if(carry&&!unique.has(start))unique.set(start,{...carry,carried:true});
+        const points=[...unique].sort((a,b)=>a[0]-b[0]).map(([t,row])=>{
+          const unit=row.a.unit_of_measurement??'',ok=key==='ph'?(unit===''||unit==='pH'):unit===(key==='ec'?'mS/cm':'m');
+          const numeric=row.s.trim()!==''&&Number.isFinite(Number(row.s));
+          return {t,value:ok&&numeric?Number(row.s):null,unit:typeof unit==='string'?unit:'',note:[row.carried||t===start?'窗口起始承接（非新樣本）':'',!ok?'單位不相容':!numeric?'缺值':''].filter(Boolean).join('；')};
+        });
+        const represented=this.historyRepresent(points);
+        if(!represented){series[key]=[];counts[key]={raw:rows.length,normalized:points.length,shown:0};refused.push(key);missing++;continue;}
+        if(!represented.some(p=>p.value!==null))missing++;shown+=represented.length;series[key]=represented;sampled||=represented.length<points.length;counts[key]={raw:rows.length,normalized:points.length,shown:represented.length};
+      }
+      return {series,raw,shown,missing,sampled,counts,refused};
+    }
+    historyPurge(message='來源或權限已變更；歷史已清除，請重新整理') {
+      this.historyGeneration=(this.historyGeneration??0)+1;
+      if(this.historyOperation)clearTimeout(this.historyOperation.timer);this.historyOperation=null;
+      if(!this.historyMetrics)return;
+      for(const n of Object.values(this.historyMetrics)){n.points=[];n.index=0;n.table.replaceChildren();n.plot.replaceChildren();text(n.active,'無可讀歷史資料');}
+      text(this.historyStatus,message);text(this.historyError,'');
+    }
+    historyObserve() {
+      if(!this.historyPanel)return;
+      const h=this._hass,u=h?.user,a=this.status()?.attributes,m=a?.source_entities;
+      const mapping=m&&Object.fromEntries(['ph','ec','level'].map(k=>[k,m[k]]));
+      const valid=!!(this.config?.entity&&mapping&&Object.values(mapping).every(id=>typeof id==='string'&&/^sensor\.[a-z0-9_]+$/.test(id))&&typeof u?.id==='string'&&u.id.trim()&&u.is_active!==false&&h?.connection&&h.connection.connected!==false&&typeof h.callWS==='function'&&this.isConnected);
+      const signature=JSON.stringify([this.config?.entity,a?.settings_target?.config_entry_id??a?.config_entry_id,a?.epoch,mapping,['ph','ec','level'].map(k=>h?.states?.[mapping?.[k]]?.attributes?.unit_of_measurement??null),typeof u?.id==='string'?u.id:null,u?.is_admin===true,u?.is_active!==false,h?.connection?.connected!==false,h?.config?.time_zone,valid]);
+      if(this.historyConnection!==h?.connection){
+        this.historyConnection?.removeEventListener?.('disconnected',this.historyDisconnected);this.historyConnection?.removeEventListener?.('ready',this.historyReady);
+        this.historyConnection=h?.connection;this.historyDisconnected=()=>{this.historyOffline=true;this.historyPurge('連線離線；歷史已清除');};this.historyReady=()=>{this.historyOffline=false;this.historyObserve();};
+        this.historyConnection?.addEventListener?.('disconnected',this.historyDisconnected);this.historyConnection?.addEventListener?.('ready',this.historyReady);
+      }
+      if(signature!==this.historySignature||h?.callWS!==this.historyWS||h?.connection!==this.historyOwnerConnection){this.historyPurge();this.historySignature=signature;this.historyWS=h?.callWS;this.historyOwnerConnection=h?.connection;this.historyDenied=false;this.historyOffline=h?.connection?.connected===false;}
+      this.historyValid=valid&&!this.historyOffline;this.historyMapping=mapping;this.historyRefresh.disabled=!this.historyValid||this.historyDenied;
+      if(this.historyIntent&&this.historyValid&&!this.historyDenied&&this.historyPanel.open&&this.historyQueued?.generation!==this.historyGeneration){
+        const q={generation:this.historyGeneration};this.historyQueued=q;queueMicrotask(()=>{if(this.historyQueued!==q||this.historyGeneration!==q.generation)return;this.historyQueued=null;if(this.historyIntent&&this.historyPanel.open&&this.historyValid&&!this.historyDenied){this.historyIntent=false;this.historyRequest();}});
+      }
+    }
+    async historyRequest() {
+      this.historyObserve();if(!this.historyValid){this.historyIntent=!!this.historyPanel?.open;return;}if(this.historyDenied||!this.historyPanel.open||!['1','6','24'].includes(this.historyWindow.value))return;this.historyIntent=false;
+      const mapping={...this.historyMapping},ids=[...new Set(Object.values(mapping))];
+      const end=Date.now(),start=end-Number(this.historyWindow.value)*3600000;
+      this.historyPurge('讀取中…');const op={generation:this.historyGeneration,ws:this._hass.callWS,hass:this._hass,signature:this.historySignature};this.historyOperation=op;
+      const current=()=>{this.historyObserve();return this.historyOperation===op&&this.historyGeneration===op.generation&&this.historyValid&&this.historyPanel.open;};
+      op.timer=setTimeout(()=>{if(current()){this.historyPurge('歷史讀取已停止');text(this.historyError,'歷史讀取逾時（20 秒）；請明確重新整理');}},20000);
+      try{const result=await op.ws.call(op.hass,{type:'history/history_during_period',entity_ids:ids,start_time:new Date(start).toISOString(),end_time:new Date(end).toISOString(),include_start_time_state:true,significant_changes_only:false,minimal_response:false,no_attributes:false});
+        if(!current())return;const decoded=this.historyDecode(result,ids,mapping,start,end);for(const key of Object.keys(this.historyMetrics)){this.historyDraw(key,decoded.series[key],start,end);if(decoded.refused.includes(key))text(this.historyMetrics[key].active,'拒絕顯示：必要極值／缺口邊界超過 240 點；請縮短窗口');}text(this.historyError,decoded.refused.length?`${decoded.refused.join('、')} 拒絕顯示：必要極值／缺口邊界超過 240 點；其他可讀指標仍顯示，請縮短窗口`:'');text(this.historyStatus,`${decoded.missing===3?'無可讀歷史資料':decoded.missing?'部分可讀歷史資料':'歷史已讀取'} · 原始 ${decoded.raw} / 顯示 ${decoded.shown} 筆；${decoded.sampled?'代表抽樣（保留各連續有效段極值及缺口邊界，非全部轉折）':'未抽樣'}；${Object.entries(decoded.counts).map(([k,c])=>`${k} 原始 ${c.raw} / 正規化 ${c.normalized} / 顯示 ${c.shown}`).join('；')}；時間排序、同時刻取回應最後一筆；窗口起始可能為承接狀態`);
+      }catch(e){if(current()){
+        const code=e?.code;this.historyDenied=code==='unauthorized'||code==='not_allowed';
+        text(this.historyStatus,'歷史未讀取；沒有目前槽歷史快取');
+        text(this.historyError,this.historyDenied?'歷史讀取權限不足':code==='unknown_command'?'此伺服器不支援原生歷史':code==='invalid_history'?'歷史回應格式無效或超出安全上限':'歷史連線／傳輸失敗；請明確重新整理');this.historyRefresh.disabled=this.historyDenied||!this.historyValid;
+      }}finally{clearTimeout(op.timer);if(this.historyOperation===op)this.historyOperation=null;}
+    }
     static getConfigElement() { return document.createElement(`${TAG}-editor`); }
     static getStubConfig(hass) {
       const entity = Object.keys(hass?.states ?? {}).find(id => /^sensor\.[a-z0-9_]+$/.test(id) && (isShadow(hass.states[id]) || isControl(hass.states[id])));
@@ -530,7 +667,7 @@
     }
     getCardSize() { return this.details.isConnected && this.details.open ? 12 : 4; }
     connectedCallback() { this.update(); }
-    disconnectedCallback() { if(this.planPanel)this.observePlanOwner();if(this.resultPanel){this.notificationPurge();if(this.notificationConnection?.removeEventListener){this.notificationConnection.removeEventListener('disconnected',this.notificationDisconnect);this.notificationConnection.removeEventListener('ready',this.notificationReady);}this.notificationConnection=null;this.renderResult();}this.invalidate();if(this.qualityPanel){const n=this.qualityNative();this.qualityBlockedNative=n?`${n.config_entry_id}:${n.epoch}:${n.observation_revision}`:null;this.qualityGeneration++;this.qualityData=null;if(this.qualityConnection?.removeEventListener){this.qualityConnection.removeEventListener('disconnected',this.qualityDisconnect);this.qualityConnection.removeEventListener('ready',this.qualityReady);}this.qualityConnection=null;this.renderQuality();} }
+    disconnectedCallback() { this.historyIntent=false;this.historyPurge();this.historyConnection?.removeEventListener?.('disconnected',this.historyDisconnected);this.historyConnection?.removeEventListener?.('ready',this.historyReady);this.historyConnection=null;if(this.planPanel)this.observePlanOwner();if(this.resultPanel){this.notificationPurge();if(this.notificationConnection?.removeEventListener){this.notificationConnection.removeEventListener('disconnected',this.notificationDisconnect);this.notificationConnection.removeEventListener('ready',this.notificationReady);}this.notificationConnection=null;this.renderResult();}this.invalidate();if(this.qualityPanel){const n=this.qualityNative();this.qualityBlockedNative=n?`${n.config_entry_id}:${n.epoch}:${n.observation_revision}`:null;this.qualityGeneration++;this.qualityData=null;if(this.qualityConnection?.removeEventListener){this.qualityConnection.removeEventListener('disconnected',this.qualityDisconnect);this.qualityConnection.removeEventListener('ready',this.qualityReady);}this.qualityConnection=null;this.renderQuality();} }
     invalidate() {
       this.epoch = (this.epoch ?? 0) + 1;this.recipeOperation=null;this.recipeGeneration=(this.recipeGeneration??0)+1;if(this.recipeConfirm)this.recipeConfirm.hidden=true;
       this.groupOperation=null;
@@ -884,6 +1021,7 @@
       }
     }
     update() {
+      this.historyInit();this.historyObserve();
       text(this.heading,this.config?.title ?? 'UNiNUS Nutriculture');
       const status = this.status();
       for (const [key, nodes] of Object.entries(this.readings)) {

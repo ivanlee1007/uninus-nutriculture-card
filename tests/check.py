@@ -37,7 +37,11 @@ files = [
     "tests/p4a_browser.py",
     "tests/p4b_browser.py",
     "tests/p4c_browser.py",
+    "tests/p5b_history_browser.py",
     "tests/p4a_capture.py",
+    "tests/p3b_fixture.cjs",
+    "tests/p3c_fixture.cjs",
+    "tests/fixtures/p3a.json",
     "tests/check.py",
     "demo/index.html",
     "package.json",
@@ -75,6 +79,10 @@ commands = [
         "p4c-browser",
         [python, "-m", "unittest", "discover", "-s", "tests", "-p", "p4c_browser.py", "-v"],
     ),
+    (
+        "p5b-history-browser",
+        [python, "-m", "unittest", "discover", "-s", "tests", "-p", "p5b_history_browser.py", "-v"],
+    ),
 ]
 for name, cmd in commands:
     with (out / f"{name}.log").open("wb") as log:
@@ -111,7 +119,7 @@ for name, cmd in commands:
         result.update(expected_cases=expected, executed_cases=int(match[1]) if match else None)
         if not match or int(match[1]) != expected or not re.search(r"# skipped 0\b", raw):
             result["returncode"] = 1
-    if name in ("browser", "p4a-browser", "p4b-browser", "p4c-browser"):
+    if name in ("browser", "p4a-browser", "p4b-browser", "p4c-browser", "p5b-history-browser"):
         expected = sum(
             isinstance(n, ast.FunctionDef) and n.name.startswith("test_")
             for n in ast.walk(
@@ -123,6 +131,7 @@ for name, cmd in commands:
                                 "p4a-browser": "tests/p4a_browser.py",
                                 "p4b-browser": "tests/p4b_browser.py",
                                 "p4c-browser": "tests/p4c_browser.py",
+                                "p5b-history-browser": "tests/p5b_history_browser.py",
                             }.get(name, "tests/test_browser.py")
                         )
                     ).read_text(encoding="utf-8")
