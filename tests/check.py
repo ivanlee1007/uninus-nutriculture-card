@@ -17,7 +17,8 @@ ROOT = Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser()
 parser.add_argument(
     "--evidence",
-    default=os.environ.get("CARD_TEST_EVIDENCE_DIR") or "test-results/gate/" + uuid.uuid4().hex,
+    default=os.environ.get("CARD_TEST_EVIDENCE_DIR")
+    or "test-results/gate/" + uuid.uuid4().hex,
 )
 args = parser.parse_args()
 out = ROOT / args.evidence
@@ -38,6 +39,7 @@ files = [
     "tests/p4b_browser.py",
     "tests/p4c_browser.py",
     "tests/p5b_history_browser.py",
+    "tests/p5c_runtime_browser.py",
     "tests/p4a_capture.py",
     "tests/p3b_fixture.cjs",
     "tests/p3c_fixture.cjs",
@@ -50,7 +52,9 @@ files = [
     ".github/workflows/validate.yml",
 ]
 hashes = {}
-files += ["tests/p4b_r2_capture/" + n for n in ["events.json", "wire.json", "grant.json"]]
+files += [
+    "tests/p4b_r2_capture/" + n for n in ["events.json", "wire.json", "grant.json"]
+]
 for name in files:
     data = (ROOT / name).read_bytes()
     target = out / "snapshot" / name
@@ -65,23 +69,87 @@ commands = [
     ("unit", [node, "tests/test_contract.cjs"]),
     (
         "browser",
-        [python, "-m", "unittest", "discover", "-s", "tests", "-p", "test_browser.py", "-v"],
+        [
+            python,
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests",
+            "-p",
+            "test_browser.py",
+            "-v",
+        ],
     ),
     (
         "p4a-browser",
-        [python, "-m", "unittest", "discover", "-s", "tests", "-p", "p4a_browser.py", "-v"],
+        [
+            python,
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests",
+            "-p",
+            "p4a_browser.py",
+            "-v",
+        ],
     ),
     (
         "p4b-browser",
-        [python, "-m", "unittest", "discover", "-s", "tests", "-p", "p4b_browser.py", "-v"],
+        [
+            python,
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests",
+            "-p",
+            "p4b_browser.py",
+            "-v",
+        ],
     ),
     (
         "p4c-browser",
-        [python, "-m", "unittest", "discover", "-s", "tests", "-p", "p4c_browser.py", "-v"],
+        [
+            python,
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests",
+            "-p",
+            "p4c_browser.py",
+            "-v",
+        ],
     ),
     (
         "p5b-history-browser",
-        [python, "-m", "unittest", "discover", "-s", "tests", "-p", "p5b_history_browser.py", "-v"],
+        [
+            python,
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests",
+            "-p",
+            "p5b_history_browser.py",
+            "-v",
+        ],
+    ),
+    (
+        "p5c-runtime-browser",
+        [
+            python,
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests",
+            "-p",
+            "p5c_runtime_browser.py",
+            "-v",
+        ],
     ),
 ]
 for name, cmd in commands:
@@ -99,6 +167,7 @@ for name, cmd in commands:
             if os.name == "nt":
                 subprocess.run(
                     ["taskkill", "/PID", str(child.pid), "/T", "/F"],
+                    check=False,
                     stdout=log,
                     stderr=subprocess.STDOUT,
                 )
@@ -112,14 +181,29 @@ for name, cmd in commands:
     if name == "unit":
         expected = len(
             re.findall(
-                r"^test\(", (ROOT / "tests/test_contract.cjs").read_text(encoding="utf-8"), re.M
+                r"^test\(",
+                (ROOT / "tests/test_contract.cjs").read_text(encoding="utf-8"),
+                re.MULTILINE,
             )
         )
         match = re.search(r"# tests (\d+)", raw)
-        result.update(expected_cases=expected, executed_cases=int(match[1]) if match else None)
-        if not match or int(match[1]) != expected or not re.search(r"# skipped 0\b", raw):
+        result.update(
+            expected_cases=expected, executed_cases=int(match[1]) if match else None
+        )
+        if (
+            not match
+            or int(match[1]) != expected
+            or not re.search(r"# skipped 0\b", raw)
+        ):
             result["returncode"] = 1
-    if name in ("browser", "p4a-browser", "p4b-browser", "p4c-browser", "p5b-history-browser"):
+    if name in (
+        "browser",
+        "p4a-browser",
+        "p4b-browser",
+        "p4c-browser",
+        "p5b-history-browser",
+        "p5c-runtime-browser",
+    ):
         expected = sum(
             isinstance(n, ast.FunctionDef) and n.name.startswith("test_")
             for n in ast.walk(
@@ -132,6 +216,7 @@ for name, cmd in commands:
                                 "p4b-browser": "tests/p4b_browser.py",
                                 "p4c-browser": "tests/p4c_browser.py",
                                 "p5b-history-browser": "tests/p5b_history_browser.py",
+                                "p5c-runtime-browser": "tests/p5c_runtime_browser.py",
                             }.get(name, "tests/test_browser.py")
                         )
                     ).read_text(encoding="utf-8")
@@ -139,7 +224,9 @@ for name, cmd in commands:
             )
         )
         match = re.search(r"Ran (\d+) tests?", raw)
-        result.update(expected_cases=expected, executed_cases=int(match[1]) if match else None)
+        result.update(
+            expected_cases=expected, executed_cases=int(match[1]) if match else None
+        )
         if not match or int(match[1]) != expected or "skipped=" in raw:
             result["returncode"] = 1
     results.append(result)

@@ -27,3 +27,8 @@ tests/p4b_r2_capture/wire.json -text whitespace=blank-at-eol,blank-at-eof,space-
 
 # Immutable P4c allowlisted evidence retains raw bytes and historical whitespace only.
 docs/evidence/p4c-publication-r4/** -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+
+# Preserve approved P5c runner/native/workflow bytes; retain whitespace checks.
+tests/check.py -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+tests/p5c_runtime_native_browser.py -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+.github/workflows/validate.yml -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

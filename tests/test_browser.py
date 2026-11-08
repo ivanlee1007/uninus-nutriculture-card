@@ -425,7 +425,7 @@ class BrowserTests(unittest.TestCase):
         self.assertFalse(row.is_disabled())
         row.click()
         self.assertEqual(p.evaluate('calls.at(-1)'),['switch','turn_off',{'entity_id':'switch.actual_acid_enabled'}])
-        p.locator('details:not([data-history-panel]) > summary').first.click()
+        p.locator('details:not([data-history-panel]):not([data-trace-panel]) > summary').first.click()
         p.locator('[data-dose-details] summary').click()
         p.locator('[data-acid="pulse_seconds"] input').fill('3')
         p.locator('[data-group-cancel]').click()
@@ -462,7 +462,7 @@ class BrowserTests(unittest.TestCase):
     def test_25_v3_group_apply_cancel_readback_and_reopen(self):
         self.nutrient_fixture()
         p=self.page
-        p.locator('details:not([data-history-panel]) > summary').first.click()
+        p.locator('details:not([data-history-panel]):not([data-trace-panel]) > summary').first.click()
         self.assertEqual(p.locator('[data-param] button:visible').count(),0)
         p.locator('[data-param="ec_low"] input').fill('0.82')
         p.locator('[data-param="ec_high"] input').fill('0.92')
@@ -488,13 +488,13 @@ class BrowserTests(unittest.TestCase):
         self.assertIn('讀回',p.locator('[data-group-message]').inner_text())
         p.evaluate("() => {const a=card.hass.states['sensor.status'].attributes,d=calls.at(-1)[2];a.parameters=d.parameters;a.dosing_parameters=d.dosing_parameters;a.allowed_weekdays=d.allowed_weekdays;a.settings_revision=5;for(const [k,v] of Object.entries(d.parameters))card.hass.states[a.parameter_entities[k]].state=String(v);card.hass=card.hass}")
         self.assertIn('已套用',p.locator('[data-group-message]').inner_text())
-        p.locator('details:not([data-history-panel]) > summary').first.click();p.locator('details:not([data-history-panel]) > summary').first.click()
+        p.locator('details:not([data-history-panel]):not([data-trace-panel]) > summary').first.click();p.locator('details:not([data-history-panel]):not([data-trace-panel]) > summary').first.click()
         self.assertEqual(p.locator('[data-param="ec_low"] input').input_value(),'0.82')
 
     def test_26_v3_conflict_preserves_complete_draft_and_cancel_reloads(self):
         self.nutrient_fixture()
         p=self.page
-        p.locator('details:not([data-history-panel]) > summary').first.click()
+        p.locator('details:not([data-history-panel]):not([data-trace-panel]) > summary').first.click()
         p.locator('[data-param="ec_low"] input').fill('0.82')
         p.evaluate("() => {const a=card.hass.states['sensor.status'].attributes;a.settings_revision=5;a.parameters.ec_low=.81;card.hass=card.hass}")
         self.assertEqual(p.locator('[data-param="ec_low"] input').input_value(),'0.82')
@@ -513,7 +513,7 @@ class BrowserTests(unittest.TestCase):
     def test_27_v3_pending_slot_mapping_and_remount_late_promises(self):
         self.nutrient_fixture()
         p=self.page
-        p.locator('details:not([data-history-panel]) > summary').first.click()
+        p.locator('details:not([data-history-panel]):not([data-trace-panel]) > summary').first.click()
         p.locator('[data-param="ec_low"] input').fill('0.82')
         p.evaluate("() => {card.hass.callService=(...args)=>{calls.push(args);return new Promise((resolve,reject)=>{window.finish=resolve;window.fail=reject})}}")
         p.locator('[data-group-apply]').click()
@@ -542,7 +542,7 @@ class BrowserTests(unittest.TestCase):
     def test_28_v3_container_geometry_themes_and_live_typing(self):
         self.nutrient_fixture()
         p=self.page
-        p.locator('details:not([data-history-panel]) > summary').first.click()
+        p.locator('details:not([data-history-panel]):not([data-trace-panel]) > summary').first.click()
         p.locator('[data-dose-details] summary').click()
         p.locator('[data-week-details] summary').click()
         field=p.locator('[data-param="ec_low"] input')
@@ -612,7 +612,7 @@ class BrowserTests(unittest.TestCase):
         self.assertNotIn('不控制設備',p.locator('.safety').inner_text())
         for label in ['加養','加酸','獨立混合','尚未支援']:
             self.assertIn(label,p.locator('[data-unsupported]').inner_text())
-        p.locator('details:not([data-history-panel]) > summary').click()
+        p.locator('details:not([data-history-panel]):not([data-trace-panel]) > summary').click()
         row=p.locator('[data-param="ph_low"]')
         row.locator('input').fill('5.55');row.locator('button').click()
         self.assertEqual(p.evaluate('calls'),[['number','set_value',{'entity_id':'number.tank_ph_low','value':5.55}]])
@@ -801,7 +801,7 @@ class BrowserTests(unittest.TestCase):
     def test_02_explicit_single_item_save_uses_actual_metadata(self):
         p = self.page
         self.assertEqual(p.locator('[data-param]').count(),10)
-        p.locator('details:not([data-history-panel]) > summary').click()
+        p.locator('details:not([data-history-panel]):not([data-trace-panel]) > summary').click()
         row = p.locator('[data-param="ph_low"]')
         field = row.locator('input')
         self.assertEqual(field.get_attribute('min'),'0')
@@ -811,12 +811,12 @@ class BrowserTests(unittest.TestCase):
         self.assertEqual(p.evaluate('calls'),[])
         row.locator('button').click()
         self.assertEqual(p.evaluate('calls'),[['number','set_value',{'entity_id':'number.tank_ph_low','value':5.55}]])
-        self.assertIn('單項儲存',p.locator('details:not([data-history-panel])').inner_text())
-        self.assertIn('僅儲存',p.locator('details:not([data-history-panel])').inner_text())
+        self.assertIn('單項儲存',p.locator('details:not([data-history-panel]):not([data-trace-panel])').inner_text())
+        self.assertIn('僅儲存',p.locator('details:not([data-history-panel]):not([data-trace-panel])').inner_text())
 
     def test_03_draft_cannot_follow_a_new_tank(self):
         p = self.page
-        p.locator('details:not([data-history-panel]) > summary').click()
+        p.locator('details:not([data-history-panel]):not([data-trace-panel]) > summary').click()
         field = p.locator('[data-param="ph_low"] input')
         field.fill('5.55')
         p.evaluate("""() => {
@@ -831,7 +831,7 @@ class BrowserTests(unittest.TestCase):
 
     def test_04_old_completion_cannot_touch_reconfigured_draft(self):
         p = self.page
-        p.locator('details:not([data-history-panel]) > summary').click()
+        p.locator('details:not([data-history-panel]):not([data-trace-panel]) > summary').click()
         row = p.locator('[data-param="ph_low"]')
         row.locator('input').fill('5.55')
         p.evaluate("() => {card.hass.callService=(...args)=>{calls.push(args);return new Promise((resolve,reject)=>{window.finish=resolve;window.fail=reject;});};}")
@@ -840,7 +840,7 @@ class BrowserTests(unittest.TestCase):
         self.assertEqual(len(p.evaluate('calls')),1)
         self.assertTrue(row.locator('input').is_disabled())
         p.evaluate("card.setConfig({entity:'sensor.other'});card.hass=fixture('sensor.other')")
-        p.locator('details:not([data-history-panel]) > summary').click()
+        p.locator('details:not([data-history-panel]):not([data-trace-panel]) > summary').click()
         self.assertTrue(row.locator('input').is_enabled())
         row.locator('input').fill('6.15')
         p.evaluate("fail(new Error('old tank rejection'))")
@@ -850,7 +850,7 @@ class BrowserTests(unittest.TestCase):
 
     def test_05_mapping_drift_cannot_retarget_a_typed_draft(self):
         p = self.page
-        p.locator('details:not([data-history-panel]) > summary').click()
+        p.locator('details:not([data-history-panel]):not([data-trace-panel]) > summary').click()
         row = p.locator('[data-param="ph_low"]')
         row.locator('input').fill('5.55')
         p.evaluate("""() => {
@@ -887,7 +887,7 @@ class BrowserTests(unittest.TestCase):
         self.assertFalse(emitted['show_parameters'])
         self.assertEqual(emitted['title'],'新的標題')
         p.evaluate('card.setConfig(events.at(-1))')
-        self.assertEqual(p.locator('uninus-nutriculture-card details:not([data-history-panel])').count(),0)
+        self.assertEqual(p.locator('uninus-nutriculture-card details:not([data-history-panel]):not([data-trace-panel])').count(),0)
         self.assertEqual(p.locator('uninus-nutriculture-card details[data-history-panel]').count(),1)
         self.assertFalse(p.locator('uninus-nutriculture-card details[data-history-panel]').evaluate('(el)=>el.open'))
         p.evaluate('editor.setConfig(events.at(-1));editor.hass=fixture()')
@@ -896,7 +896,7 @@ class BrowserTests(unittest.TestCase):
 
     def test_07_unresolved_target_stays_locked_across_same_config(self):
         p = self.page
-        p.locator('details:not([data-history-panel]) > summary').click()
+        p.locator('details:not([data-history-panel]):not([data-trace-panel]) > summary').click()
         row = p.locator('[data-param="ph_low"]')
         row.locator('input').fill('5.55')
         p.evaluate("() => {card.hass.callService=(...args)=>{calls.push(args);return new Promise(resolve=>{window.finish=resolve;});};}")
@@ -924,7 +924,7 @@ class BrowserTests(unittest.TestCase):
             'unknown_number': "h.states['number.tank_ph_low'].state='unknown'",
             'bad_metadata': "h.states['number.tank_ph_low'].attributes.step=0",
         }
-        self.page.locator('details:not([data-history-panel]) > summary').click()
+        self.page.locator('details:not([data-history-panel]):not([data-trace-panel]) > summary').click()
         for label,mutation in scenarios.items():
             with self.subTest(label=label):
                 self.page.evaluate("() => {const h=fixture();"+mutation+";card.hass=h;const r=card.rows.get('ph_low');r.input.value='5.55';r.input.dispatchEvent(new Event('input'));r.button.click();}")
@@ -934,7 +934,7 @@ class BrowserTests(unittest.TestCase):
 
     def test_09_numeric_range_step_finite_and_rejection_preserves_draft(self):
         p = self.page
-        p.locator('details:not([data-history-panel]) > summary').click()
+        p.locator('details:not([data-history-panel]):not([data-trace-panel]) > summary').click()
         row=p.locator('[data-param="ph_low"]')
         for value in ['', 'NaN','Infinity','-1','15','5.555']:
             p.evaluate("value=>{const r=card.rows.get('ph_low');r.input.value=value;r.input.dispatchEvent(new Event('input'));r.button.click();}",value)
@@ -951,7 +951,7 @@ class BrowserTests(unittest.TestCase):
 
     def test_10_live_updates_preserve_node_focus_caret_and_disclosure(self):
         p = self.page
-        p.locator('details:not([data-history-panel]) > summary').click()
+        p.locator('details:not([data-history-panel]):not([data-trace-panel]) > summary').click()
         field=p.locator('[data-param="ph_low"] input')
         field.fill('5.55'); field.press('Home'); field.press('ArrowRight')
         p.evaluate("window.originalInput=card.rows.get('ph_low').input")
@@ -965,7 +965,7 @@ class BrowserTests(unittest.TestCase):
 
     def test_11_disconnected_success_and_failure_cannot_clear_draft(self):
         p=self.page
-        p.locator('details:not([data-history-panel]) > summary').click()
+        p.locator('details:not([data-history-panel]):not([data-trace-panel]) > summary').click()
         row=p.locator('[data-param="ph_low"]')
         for reject in [False,True]:
             row.locator('input').fill('5.55')
@@ -1024,7 +1024,7 @@ class BrowserTests(unittest.TestCase):
     def test_14_collapsed_card_surfaces_unwritable_parameters(self):
         self.page.evaluate("delete card.hass.states['number.tank_ph_low'];card.hass=card.hass")
         self.assertIn('參數無法儲存',self.page.locator('.quality').inner_text())
-        self.assertFalse(self.page.locator('details:not([data-history-panel])').evaluate('(el)=>el.open'))
+        self.assertFalse(self.page.locator('details:not([data-history-panel]):not([data-trace-panel])').evaluate('(el)=>el.open'))
 
     def test_15_offline_demo_writes_only_simulated_memory(self):
         p=self.page
@@ -1032,7 +1032,7 @@ class BrowserTests(unittest.TestCase):
         p.on('request',lambda request:requests.append(request.url))
         p.goto((ROOT/'demo'/'index.html').as_uri())
         self.assertIn('模擬資料 · 非即時系統',p.locator('h1').inner_text())
-        p.locator('details:not([data-history-panel]) > summary').click()
+        p.locator('details:not([data-history-panel]):not([data-trace-panel]) > summary').click()
         p.locator('[data-param="ph_low"] input').fill('5.55')
         p.locator('[data-param="ph_low"] button').click()
         log=json.loads(p.locator('#log').inner_text())
@@ -1043,7 +1043,7 @@ class BrowserTests(unittest.TestCase):
 
     def test_16_all_ten_parameters_target_their_own_number(self):
         p=self.page
-        p.locator('details:not([data-history-panel]) > summary').click()
+        p.locator('details:not([data-history-panel]):not([data-trace-panel]) > summary').click()
         keys=['level_low','level_high','ph_low','ph_high','ec_low','ec_high','refill_timeout','ec_timeout','ph_timeout','mix_duration']
         values=[2.26,2.41,5.41,5.81,.81,.91,191,91,191,11]
         for key,value in zip(keys,values):
