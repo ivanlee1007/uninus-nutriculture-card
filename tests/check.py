@@ -17,8 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser()
 parser.add_argument(
     "--evidence",
-    default=os.environ.get("CARD_TEST_EVIDENCE_DIR")
-    or "test-results/gate/" + uuid.uuid4().hex,
+    default=os.environ.get("CARD_TEST_EVIDENCE_DIR") or "test-results/gate/" + uuid.uuid4().hex,
 )
 args = parser.parse_args()
 out = ROOT / args.evidence
@@ -52,9 +51,7 @@ files = [
     ".github/workflows/validate.yml",
 ]
 hashes = {}
-files += [
-    "tests/p4b_r2_capture/" + n for n in ["events.json", "wire.json", "grant.json"]
-]
+files += ["tests/p4b_r2_capture/" + n for n in ["events.json", "wire.json", "grant.json"]]
 for name in files:
     data = (ROOT / name).read_bytes()
     target = out / "snapshot" / name
@@ -187,14 +184,8 @@ for name, cmd in commands:
             )
         )
         match = re.search(r"# tests (\d+)", raw)
-        result.update(
-            expected_cases=expected, executed_cases=int(match[1]) if match else None
-        )
-        if (
-            not match
-            or int(match[1]) != expected
-            or not re.search(r"# skipped 0\b", raw)
-        ):
+        result.update(expected_cases=expected, executed_cases=int(match[1]) if match else None)
+        if not match or int(match[1]) != expected or not re.search(r"# skipped 0\b", raw):
             result["returncode"] = 1
     if name in (
         "browser",
@@ -224,9 +215,7 @@ for name, cmd in commands:
             )
         )
         match = re.search(r"Ran (\d+) tests?", raw)
-        result.update(
-            expected_cases=expected, executed_cases=int(match[1]) if match else None
-        )
+        result.update(expected_cases=expected, executed_cases=int(match[1]) if match else None)
         if not match or int(match[1]) != expected or "skipped=" in raw:
             result["returncode"] = 1
     results.append(result)
